@@ -3,8 +3,8 @@
   
   const menuItems = [
     { name: 'Dashboard', icon: '/Dashboard%20Layout.png', href: '/Admin_page' },
-    { name: 'Manage Users', icon: '/Users.png', href: '/Admin_page/users' },
-    { name: 'Business', icon: '/Business.png', href: '/Admin_page/business' },
+    { name: 'Manage Users', icon: '/Users.png', href: '/Admin_page' },
+    { name: 'Business', icon: '/Business.png', href: '/bussiness' },
     { name: 'Reported Items', icon: '/Group%20248.png', href: '/Admin_page/reports' }
   ];
 </script>

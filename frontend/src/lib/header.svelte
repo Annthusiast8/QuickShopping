@@ -1,6 +1,6 @@
 <header>
   <div class="header-container">
-    <a href="/" class="logo">QuickShopping</a>
+    <a href="/Profile" class="logo">QuickShopping</a>
     <div class="profile-section">
       <img src="/briar-lol-game-4k-wallpaper-uhdpaper.com-899@1@l.jpg" alt="Profile" class="profile-image">
     </div>
