@@ -27,8 +27,8 @@
 
 <style>
   .sidebar {
-    width: 220px;
-    height: 100vh;
+    width: 200px;
+    min-height: calc(100vh - 60px);
     background: #fffaec;
     display: flex;
     flex-direction: column;
@@ -37,60 +37,78 @@
     padding: 0;
     position: fixed;
     left: 0;
-    top: 0;
+    top: 60px;
     box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    overflow: hidden;
   }
+
   nav {
     width: 100%;
-    margin-top: 40px;
+    padding-top: 1rem;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 0.5rem;
     align-items: center;
   }
+
   .nav-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    width: 90%;
-    padding: 12px 0 12px 16px;
-    color: #222;
+    gap: 0.75rem;
+    width: 85%;
+    padding: 0.75rem 1rem;
+    color: #666;
     text-decoration: none;
-    font-size: 16px;
+    font-size: 0.9rem;
     font-weight: 500;
-    border-radius: 8px;
+    border-radius: 6px;
     background: none;
-    transition: background 0.2s, color 0.2s;
-    justify-content: flex-start;
+    transition: all 0.2s ease;
   }
-  .nav-item.active, .nav-item:focus {
-    background: #e6ecf2;
+
+  .nav-item:hover {
+    background: rgba(230, 236, 242, 0.5);
     color: #2b4b66;
   }
+
+  .nav-item.active {
+    background: #e6ecf2;
+    color: #2b4b66;
+    font-weight: 600;
+  }
+
   .icon {
-    width: 26px;
-    height: 26px;
+    width: 20px;
+    height: 20px;
     flex-shrink: 0;
     object-fit: contain;
+    opacity: 0.7;
   }
+
+  .nav-item.active .icon,
+  .nav-item:hover .icon {
+    opacity: 1;
+  }
+
   .logout {
     margin-top: auto;
-    margin-bottom: 32px;
-    align-self: center;
+    margin-bottom: 1.5rem;
     width: 85%;
-    height: 40px;
+    height: 36px;
     background: #ed3324;
     color: #fff;
     border: none;
-    border-radius: 20px;
-    font-size: 18px;
+    border-radius: 18px;
+    font-size: 0.95rem;
     font-weight: 500;
     cursor: pointer;
     transition: background 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 2px 4px rgba(237, 51, 36, 0.2);
   }
+
   .logout:hover {
     background: #c82333;
   }

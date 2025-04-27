@@ -24,9 +24,10 @@
         <div class="content">
             <div class="search-section">
                 <div class="search-bar">
+                    <img src="/Leading-icon.png" alt="Leading Icon" class="leading-icon">
                     <input type="text" placeholder="Search a user..." bind:value={searchQuery}>
                     <button class="search-btn">
-                        <img src="/search.png" alt="Search">
+                        <img src="/Search.png" alt="Search">
                     </button>
                 </div>
 
@@ -34,19 +35,19 @@
                     <div class="user-type">
                         <span>User Type:</span>
                         <div class="buttons">
-                            <button class:active={userType === 'Seller'} onclick={() => userType = 'Seller'}>Seller</button>
-                            <button class:active={userType === 'Customer'} onclick={() => userType = 'Customer'}>Customer</button>
+                            <button class:active={userType === 'Seller'} on:click={() => userType = 'Seller'}>Seller</button>
+                            <button class:active={userType === 'Customer'} on:click={() => userType = 'Customer'}>Customer</button>
                         </div>
                     </div>
 
                     <div class="sort-by">
                         <span>Sort by:</span>
                         <div class="buttons">
-                            <button class:active={sortBy === 'User ID'} onclick={() => sortBy = 'User ID'}>User ID</button>
-                            <button class:active={sortBy === 'Username'} onclick={() => sortBy = 'Username'}>Username</button>
-                            <button class:active={sortBy === 'Status'} onclick={() => sortBy = 'Status'}>Status</button>
-                            <button class:active={sortBy === 'Type'} onclick={() => sortBy = 'Type'}>Type</button>
-                            <button class:active={sortBy === 'Date Joined'} onclick={() => sortBy = 'Date Joined'}>Date Joined</button>
+                            <button class:active={sortBy === 'User ID'} on:click={() => sortBy = 'User ID'}>User ID</button>
+                            <button class:active={sortBy === 'Username'} on:click={() => sortBy = 'Username'}>Username</button>
+                            <button class:active={sortBy === 'Status'} on:click={() => sortBy = 'Status'}>Status</button>
+                            <button class:active={sortBy === 'Type'} on:click={() => sortBy = 'Type'}>Type</button>
+                            <button class:active={sortBy === 'Date Joined'} on:click={() => sortBy = 'Date Joined'}>Date Joined</button>
                         </div>
                     </div>
                 </div>
@@ -65,35 +66,36 @@
                     </div>
                 </div>
 
-                <table>
-                    <thead>
-                        <tr>
-                            <th><input type="checkbox"></th>
-                            <th>User ID</th>
-                            <th>User's Name</th>
-                            <th>Status</th>
-                            <th>Type</th>
-                            <th>Date Joined</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {#each users as user}
-                            <tr>
-                                <td><input type="checkbox"></td>
-                                <td>{user.id}</td>
-                                <td>{user.name}</td>
-                                <td class={user.status.toLowerCase()}>{user.status}</td>
-                                <td>{user.type}</td>
-                                <td>{user.dateJoined}</td>
-                                <td class="actions">
-                                    <button class="edit"><img src="/edit.png" alt="Edit"></button>
-                                    <button class="delete"><img src="/delete.png" alt="Delete"></button>
-                                </td>
-                            </tr>
-                        {/each}
-                    </tbody>
-                </table>
+                <div class="table-container">
+                    <div class="table-headers">
+                        <div class="header-checkbox"></div>
+                        <div class="header-item">User ID</div>
+                        <div class="header-item">User's Name</div>
+                        <div class="header-item">Status</div>
+                        <div class="header-item">Type</div>
+                        <div class="header-item">Date Joined</div>
+                        <div class="header-item">Action</div>
+                    </div>
+
+                    <table>
+                        <tbody>
+                            {#each users as user}
+                                <tr>
+                                    <td class="checkbox-column"><input type="checkbox"></td>
+                                    <td>{user.id}</td>
+                                    <td>{user.name}</td>
+                                    <td class={user.status.toLowerCase()}>{user.status}</td>
+                                    <td>{user.type}</td>
+                                    <td>{user.dateJoined}</td>
+                                    <td class="actions">
+                                        <button class="edit"><img src="/Edit User.png" alt="Edit"></button>
+                                        <button class="delete"><img src="/Trash.png" alt="Delete"></button>
+                                    </td>
+                                </tr>
+                            {/each}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </main>
@@ -103,13 +105,16 @@
     .layout {
         display: flex;
         min-height: 100vh;
+        background-color: #F5ECD5;
+        padding-top: 60px;
     }
 
     main {
         flex: 1;
-        margin-left: 250px;
-        padding: 2rem;
-        background-color: #F5ECD5;
+        margin-left: 200px;
+        padding: 1.5rem 2rem;
+        max-width: calc(100vw - 200px);
+        box-sizing: border-box;
     }
 
     .content {
@@ -118,72 +123,104 @@
     }
 
     .search-section {
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
+        background-color: transparent;
+        padding: 1.5rem;
+        max-width: 800px;
     }
 
     .search-bar {
         display: flex;
-        gap: 1rem;
-        margin-bottom: 1rem;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        background: #FFF;
+        border-radius: 25px;
+        border: 1px solid #E5E5E5;
+        padding: 0.5rem;
+        max-width: 600px;
+    }
+
+    .search-bar img.leading-icon {
+        width: 18px;
+        height: 18px;
+        margin-left: 12px;
+        margin-right: 8px;
+        opacity: 0.6;
     }
 
     .search-bar input {
         flex: 1;
-        padding: 0.75rem;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 1rem;
+        padding: 0.5rem;
+        border: none;
+        font-size: 0.95rem;
+        outline: none;
+        background: transparent;
     }
 
     .search-btn {
-        padding: 0.75rem 1.5rem;
+        padding: 0.5rem 0.75rem;
         background: none;
         border: none;
         cursor: pointer;
     }
 
     .search-btn img {
-        width: 24px;
-        height: 24px;
+        width: 18px;
+        height: 18px;
+        opacity: 0.6;
     }
 
     .filters {
         display: flex;
         flex-direction: column;
-        gap: 1rem;
+        gap: 1.5rem;
+        margin-top: 1rem;
     }
 
     .user-type, .sort-by {
         display: flex;
-        align-items: center;
-        gap: 1rem;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .user-type span, .sort-by span {
+        font-size: 0.95rem;
+        color: #333;
+        font-weight: 500;
     }
 
     .buttons {
         display: flex;
-        gap: 0.5rem;
+        gap: 0.75rem;
+        flex-wrap: wrap;
     }
 
     .buttons button {
         padding: 0.5rem 1rem;
-        border: 1px solid #ddd;
-        background: white;
-        border-radius: 8px;
+        border: 1px solid #E5E5E5;
+        background: #F5ECD5;
+        border-radius: 20px;
         cursor: pointer;
-        transition: all 0.2s;
+        font-size: 0.95rem;
+        color: #666;
+        transition: all 0.2s ease;
     }
 
     .buttons button.active {
-        background-color: #007bff;
+        background-color: #92A8D1;
         color: white;
-        border-color: #007bff;
+        border-color: #92A8D1;
+    }
+
+    .buttons button:hover:not(.active) {
+        background-color: #eee4cc;
     }
 
     .users-list {
         background: white;
-        border-radius: 12px;
-        padding: 1.5rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border-radius: 8px;
+        padding: 1.25rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
 
     .list-header {
@@ -193,6 +230,12 @@
         margin-bottom: 1.5rem;
     }
 
+    .list-header h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #333;
+    }
+
     .list-controls {
         display: flex;
         gap: 1rem;
@@ -200,17 +243,52 @@
     }
 
     .list-controls select {
-        padding: 0.5rem;
+        padding: 0.3rem 0.6rem;
         border: 1px solid #ddd;
         border-radius: 4px;
+        font-size: 0.9rem;
+        color: #666;
     }
 
     .view-all {
-        padding: 0.5rem 1rem;
+        padding: 0.3rem 0.6rem;
         background: none;
         border: none;
-        color: #007bff;
+        color: #92A8D1;
+        font-size: 0.9rem;
         cursor: pointer;
+    }
+
+    .table-container {
+        width: 100%;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .table-headers {
+        display: flex;
+        background-color: #F5ECD5;
+        padding: 0.75rem 0;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+    }
+
+    .header-checkbox {
+        width: 40px;
+    }
+
+    .header-item {
+        flex: 1;
+        padding: 0 1rem;
+        color: #333;
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+
+    .header-item:last-child {
+        text-align: right;
+        padding-right: 2rem;
     }
 
     table {
@@ -218,15 +296,48 @@
         border-collapse: collapse;
     }
 
-    th, td {
+    td {
         padding: 1rem;
-        text-align: left;
-        border-bottom: 1px solid #ddd;
+        border-bottom: 1px solid #E5E5E5;
+        color: #666;
     }
 
-    th {
-        font-weight: 500;
-        color: #666;
+    .checkbox-column {
+        width: 40px;
+        text-align: center;
+    }
+
+    input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        cursor: pointer;
+    }
+
+    .actions {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+        padding-right: 1rem;
+    }
+
+    .actions button {
+        background: none;
+        border: none;
+        padding: 0.25rem;
+        cursor: pointer;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+    }
+
+    .actions button:hover {
+        opacity: 1;
+    }
+
+    .actions img {
+        width: 18px;
+        height: 18px;
     }
 
     td.active {
@@ -237,20 +348,7 @@
         color: #dc3545;
     }
 
-    .actions {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .actions button {
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 0.25rem;
-    }
-
-    .actions img {
-        width: 20px;
-        height: 20px;
+    tr:hover {
+        background-color: #f8f9fa;
     }
 </style>
