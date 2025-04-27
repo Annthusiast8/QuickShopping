@@ -18,9 +18,7 @@
     }
 </script>
 
-<!-- ===================
-  PAGE BACKGROUND SECTION
-=================== -->
+<!-- =================== PAGE BACKGROUND SECTION =================== -->
 <div class="register-bg">
 
   <!-- ===================
