@@ -8,7 +8,33 @@ use App\Models\User;
 
 class AuthController extends Controller
 {
-    public function login(Request $request, $role)
+    public function login(Request $request)
+    {
+        $request->validate([
+            'email'    => 'required|email',
+            'password' => 'required'
+        ]);
+
+        // Attempt to authenticate the user
+        if (!Auth::attempt($request->only('email', 'password'))) {
+            return response()->json(['message' => 'Invalid credentials'], 401);
+        }
+
+        // Get the authenticated user
+        $user = User::where('email', $request->email)->first();
+        
+        // Generate token based on user's role
+        $token = $user->createToken($user->role . '-token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Logged in successfully',
+            'token' => $token,
+            'user' => $user
+        ]);
+    }
+    
+    // Legacy role-based login - can be removed if not needed
+    public function loginWithRole(Request $request, $role)
     {
         $request->validate([
             'email'    => 'required|email',
@@ -17,9 +43,8 @@ class AuthController extends Controller
 
         // Check if the user exists with the given role
         $user = User::where('email', $request->email)
-                    ->whereHas('roles', function ($query) use ($role) {
-                        $query->where('name', $role);
-                    })->first();
+                    ->where('role', $role)
+                    ->first();
 
         if (!$user || !Auth::attempt($request->only('email', 'password'))) {
             return response()->json(['message' => 'Invalid credentials'], 401);

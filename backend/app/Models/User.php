@@ -23,6 +23,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -48,11 +49,38 @@ class User extends Authenticatable
         ];
     }
 
-    public function roles() {
-        return $this->belongsToMany(Role::class);
+    /**
+     * Check if user has the specified role
+     */
+    public function hasRole($role) {
+        return $this->role === $role;
     }
 
-    public function hasRole($role) {
-        return $this->roles()->where('name', $role)->exists();
+    /**
+     * Check if user is an admin
+     */
+    public function isAdmin() {
+        return $this->role === 'admin';
+    }
+
+    /**
+     * Check if user is a seller
+     */
+    public function isSeller() {
+        return $this->role === 'seller';
+    }
+
+    /**
+     * Check if user is a customer
+     */
+    public function isCustomer() {
+        return $this->role === 'customer';
+    }
+
+    /**
+     * Get the shop associated with the seller user.
+     */
+    public function shop() {
+        return $this->hasOne(Shop::class);
     }
 }

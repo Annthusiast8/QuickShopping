@@ -20,20 +20,18 @@ class RoleMiddleware
     {
         $user = $request->user(); // Get authenticated user
 
-        if (!$user || !$user->roles()->exists()) {
+        if (!$user || !$user->role) {
             return response()->json(['message' => 'Unauthorized'], Response::HTTP_FORBIDDEN);
         }
 
-        // Get the highest role level of the user
-        $userMaxRoleLevel = $user->roles->max(function ($role) {
-            return $this->roleHierarchy[$role->name] ?? 0;
-        });
+        // Get the user's role level
+        $userRoleLevel = $this->roleHierarchy[$user->role] ?? 0;
 
         // Get required role level
         $requiredRoleLevel = $this->roleHierarchy[$requiredRole] ?? 0;
 
-        // Strictly enforce access only for their specific level
-        if ($userMaxRoleLevel !== $requiredRoleLevel && $userMaxRoleLevel < 3) { 
+        // Strictly enforce access only for their specific level or admin
+        if ($userRoleLevel !== $requiredRoleLevel && $userRoleLevel < 3) { 
             return response()->json(['message' => 'Unauthorized'], Response::HTTP_FORBIDDEN);
         }
 

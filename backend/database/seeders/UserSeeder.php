@@ -6,7 +6,6 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 use App\Models\User;
-use App\Models\Role;
 use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
@@ -16,14 +15,8 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        $roles = [
-            'admin' => Role::firstOrCreate(['name' => 'admin']),
-            'seller' => Role::firstOrCreate(['name' => 'seller']),
-            'customer' => Role::firstOrCreate(['name' => 'customer']),
-        ];
-
-         // Define users with different roles
-         $users = [
+        // Define users with different roles
+        $users = [
             [
                 'name' => 'Admin User',
                 'email' => 'admin@example.com',
@@ -44,16 +37,14 @@ class UserSeeder extends Seeder
             ],
         ];
 
-        // Insert users into the database and attach roles
+        // Insert users into the database with direct role assignment
         foreach ($users as $userData) {
-            $user = User::create([
+            User::create([
                 'name' => $userData['name'],
                 'email' => $userData['email'],
                 'password' => $userData['password'],
+                'role' => $userData['role'],
             ]);
-
-            // Assign role using pivot table
-            $user->roles()->attach($roles[$userData['role']]);
         }
     }
 }

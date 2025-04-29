@@ -1,4 +1,5 @@
 <script lang="ts">
+     import Login from "./login/+page.svelte";
     import axios from "axios";
     import { onMount } from "svelte";
 
@@ -13,15 +14,7 @@
 
         })
     })
-
-	let name: string = 'world';
-
-	function greet(name: string) {
-		alert(`Hello, ${name}!`);
-	}
 </script>
-
-<h1>Welcome to SvelteKit</h1>
 
 <h1>
     {#each data as item}
@@ -29,4 +22,4 @@
     {/each}
 </h1>
 
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+<Login/>

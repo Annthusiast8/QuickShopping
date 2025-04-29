@@ -18,7 +18,9 @@ Route::prefix('admin')
     ->middleware(['auth:sanctum', RoleMiddleware::class.':admin'])
     ->controller(AdminController::class)
     ->group(function () {
-        
+        Route::get('/users', 'getUsers');
+        Route::put('/users/{userId}/role', 'updateUserRole');
+        Route::delete('/users/{userId}', 'deleteUser');
     });
 
 
@@ -41,20 +43,22 @@ Route::prefix('customer')
 
 //Auth Routes 
 /*
-POST /api/login/admin → For Admin Login
-POST /api/login/seller → For Seller Login
-POST /api/login/customer → For Customer Login
+POST /api/login → Generic login endpoint (preferred)
+POST /api/login/{role} → Role-specific login (legacy)
 */ 
-Route::post('/login/{role}', [AuthController::class, 'login'])->where('role', 'admin|seller|customer');
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login/{role}', [AuthController::class, 'loginWithRole'])->where('role', 'admin|seller|customer');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
 //Register Routes
 /*
 POST /api/register/seller → For Seller Login
 POST /api/register/customer → For Customer Login
+POST /api/register/admin → For Admin Registration
 */
 Route::post('/register/customer', [RegisterController::class, 'registerCustomer']);
 Route::post('/register/seller', [RegisterController::class, 'registerSeller']);
+Route::post('/register/admin', [RegisterController::class, 'registerAdmin']);
 
 //Health Checks
 Route::prefix('/health')->group(function (){
