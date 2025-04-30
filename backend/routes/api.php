@@ -12,6 +12,9 @@ use App\Http\Controllers\AuthController;
 use App\Http\Middleware\RoleMiddleware;
 
 use App\Http\Controllers\RegisterController;
+use App\Http\Controllers\ItemController;
+use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\OrderController;
 
 //Admin Routes -> http://127.0.0.1:8000/api/admin
 Route::prefix('admin')
@@ -65,4 +68,29 @@ Route::prefix('/health')->group(function (){
     Route::get('/admin', [AdminController::class, 'checkHealth']);
     Route::get('/customer', [CustomerController::class, 'checkHealth']);
     Route::get('/seller', [SellerController::class, 'checkHealth']);
+});
+
+// Public routes
+Route::get('/items', [ItemController::class, 'index']);
+Route::get('/items/{id}', [ItemController::class, 'show']);
+
+// Protected routes
+Route::middleware('auth:sanctum')->group(function () {
+    // Item routes
+    Route::post('/items', [ItemController::class, 'store']);
+    Route::get('/seller/items', [ItemController::class, 'myItems']);
+    Route::put('/items/{id}', [ItemController::class, 'update']);
+    Route::delete('/items/{id}', [ItemController::class, 'destroy']);
+
+    // Review routes
+    Route::post('/items/{itemId}/reviews', [ReviewController::class, 'store']);
+    Route::put('/reviews/{id}', [ReviewController::class, 'update']);
+    Route::delete('/reviews/{id}', [ReviewController::class, 'destroy']);
+
+    // Order routes
+    Route::get('/orders', [OrderController::class, 'index']);
+    Route::get('/seller/orders', [OrderController::class, 'sellerOrders']);
+    Route::post('/items/{itemId}/orders', [OrderController::class, 'store']);
+    Route::get('/orders/{id}', [OrderController::class, 'show']);
+    Route::put('/orders/{id}/status', [OrderController::class, 'updateStatus']);
 });
