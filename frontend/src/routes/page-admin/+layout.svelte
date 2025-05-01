@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
 
-  // Check if user is logged in and is admin
+  // Check if user is logged in and is admin (COMMENT)
   onMount(() => {
     if (!$auth.isAuthenticated) {
       goto('/login');

@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 import { api } from '$lib/services/api.js';
 
-interface Product {
+export interface Product {
   id: number;
   seller_id: number;
   name: string;
@@ -12,6 +12,9 @@ interface Product {
   is_active: boolean;
   created_at: string;
   updated_at: string | null;
+  rating?: number;
+  review_count?: number;
+  category?: string;
 }
 
 function createProductStore() {
