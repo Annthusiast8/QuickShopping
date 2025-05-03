@@ -1,9 +1,11 @@
 <header>
   <div class="header-container">
     <a href="/Profile" class="logo">QuickShopping</a>
-    <div class="profile-section">
-      <img src="/briar-lol-game-4k-wallpaper-uhdpaper.com-899@1@l.jpg" alt="Profile" class="profile-image">
-    </div>
+    <a href="/Profile" class="profile-link">
+      <div class="profile-section">
+        <img src="/briar-lol-game-4k-wallpaper-uhdpaper.com-899@1@l.jpg" alt="Profile" class="profile-image">
+      </div>
+    </a>
   </div>
 </header>
 
@@ -38,9 +40,22 @@
     letter-spacing: 0.5px;
   }
 
+  .profile-link {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+  }
+
   .profile-section {
     display: flex;
     align-items: center;
+    padding: 4px;
+    border-radius: 24px;
+    transition: background-color 0.2s ease;
+  }
+
+  .profile-section:hover {
+    background-color: rgba(255, 255, 255, 0.1);
   }
 
   .profile-image {

@@ -1,28 +1,88 @@
+<!-- 
+  Sidebar.svelte
+  This component renders different sidebar layouts based on the current route.
+  It uses Svelte's reactive statements to detect the current page and render the appropriate menu.
+-->
+
 <script>
   import { page } from '$app/stores';
   
-  const menuItems = [
-    { name: 'Dashboard', icon: '/Dashboard%20Layout.png', href: '/Admin_page' },
+  // Admin/Business sidebar menu items
+  // Used when the user is on admin or business related pages
+  const adminMenuItems = [
+    { name: 'Dashboard', icon: '/Dashboard%20Layout.png', href: '/#' },
     { name: 'Manage Users', icon: '/Users.png', href: '/Admin_page' },
     { name: 'Business', icon: '/Business.png', href: '/bussiness' },
     { name: 'Reported Items', icon: '/Group%20248.png', href: '/Admin_page/reports' }
   ];
+
+  // Create Product sidebar menu items
+  // Used when the user is on product creation or management pages
+  const createProductMenuItems = [
+    { name: 'Your Profile', icon: '/profile.png', href: '/profile' },
+    { name: 'Your Products', icon: '/market.png', href: '/products' },
+    { name: 'All Orders', icon: 'cart.png', href: '/orders' },
+    { name: 'Your Coupons', icon: '/coupon.png', href: '/coupons' },
+    { name: 'Category List', icon: '/categ.png', href: '/categories' }
+  ];
+
+  // Reactive statement to detect if current route is Create_Product
+  // This triggers a re-render whenever the page URL changes
+  $: isCreateProduct = $page.url.pathname.startsWith('/Create_Product');
 </script>
 
+<!-- 
+  Main sidebar container
+  Uses conditional rendering based on the current route:
+  1. Order_status page: Shows user profile and purchase-related navigation
+  2. Create_Product pages: Shows product management navigation
+  3. Default: Shows admin/business navigation
+-->
 <div class="sidebar">
-  <nav>
-    {#each menuItems as item}
-      <a 
-        href={item.href}
-        class="nav-item"
-        class:active={$page.url.pathname === item.href}
-      >
-        <img class="icon" src={item.icon} alt={item.name} />
-        <span>{item.name}</span>
+  {#if $page.url.pathname === '/Order_status'}
+    <!-- Order Status Page Layout -->
+    <div class="profile-section">
+      <img class="avatar" src="/briar-lol-game-4k-wallpaper-uhdpaper.com-899@1@l.jpg" alt="User Avatar" />
+      <div class="username">kape_meow</div>
+      <div class="edit-profile"><a href="/Profile">✎ Edit profile</a></div>
+    </div>
+    <nav class="user-nav">
+      <a href="/Profile" class="nav-item" class:active={$page.url.pathname === '/account'}>
+        <img class="icon" src="/profile.png" alt="My Account" />
+        <span>My Account</span>
       </a>
-    {/each}
-  </nav>
-  <button class="logout">Logout</button>
+      <a href="/purchases" class="nav-item" class:active={$page.url.pathname === '/purchases'}>
+        <img class="icon" src="/categ.png" alt="My Purchases" />
+        <span>My Purchases</span>
+      </a>
+    </nav>
+  {:else if isCreateProduct}
+    <!-- Create Product Page Layout -->
+    <nav>
+      {#each createProductMenuItems as item}
+        <a href={item.href} class="nav-item" class:active={$page.url.pathname === item.href}>
+          <img class="icon" src={item.icon} alt={item.name} />
+          <span>{item.name}</span>
+        </a>
+      {/each}
+    </nav>
+    <button class="logout">Logout</button>
+  {:else}
+    <!-- Admin/Business Page Layout -->
+    <nav>
+      {#each adminMenuItems as item}
+        <a 
+          href={item.href}
+          class="nav-item"
+          class:active={$page.url.pathname === item.href}
+        >
+          <img class="icon" src={item.icon} alt={item.name} />
+          <span>{item.name}</span>
+        </a>
+      {/each}
+    </nav>
+    <button class="logout">Logout</button>
+  {/if}
 </div>
 
 <style>
@@ -111,5 +171,70 @@
 
   .logout:hover {
     background: #c82333;
+  }
+
+  .profile-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 0.5rem;
+    border: 2px solid #e6e6e6;
+  }
+  .username {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #222;
+    margin-bottom: 0.1rem;
+  }
+  .edit-profile {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 0.5rem;
+  }
+  .edit-profile a {
+    color: #888;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .edit-profile a:hover {
+    color: #2b4b66;
+  }
+  .user-nav {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .user-nav .nav-item {
+    width: 85%;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #222;
+    background: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .user-nav .nav-item.active, .user-nav .nav-item:active, .user-nav .nav-item:focus {
+    background: #b2c6d6;
+    color: #fff;
+  }
+  .user-nav .nav-item:hover {
+    background: #e6ecf2;
+    color: #2b4b66;
   }
 </style>
