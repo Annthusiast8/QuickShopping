@@ -16,7 +16,9 @@ export interface Product {
   review_count?: number;
   category?: string;
   variations?: {
-    sizes: string[];
+    sizes: string[] | number[];
+    sizeType: 'standard' | 'numeric';
+    sizeUnit?: 'cm' | 'inch' | 'mm'; // Only used when sizeType is 'numeric'
     colors: string[];
   };
 }

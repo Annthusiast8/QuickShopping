@@ -2,13 +2,17 @@
   import type { Product } from '$lib/stores/products';
   import ProductModal from './ProductModal.svelte';
   import AddToCartModal from './AddToCartModal.svelte';
+  import AddToCartSuccess from './Alerts.svelte';
   import { onMount } from 'svelte';
+  import { cartStore } from '$lib/stores/cart';
 
   export let product: Product;
   export let onAddToCart: (product: Product) => void;
 
   let showModal = false;
   let showAddToCartModal = false;
+  let showSuccessOverlay = false;
+
   let sellerName = '';
 
   // Mock business profiles
@@ -52,9 +56,30 @@
     return stars.join('');
   }
 
-  function handleAddToCart(event: CustomEvent<Product>) {
-    onAddToCart(event.detail);
+  function handleAddToCart(event: CustomEvent) {
+    const cartData = event.detail;
+    
+    // Add to cart using cart store
+    cartStore.addItem({
+      product: cartData.product,
+      quantity: cartData.quantity,
+      variation: cartData.variation,
+      selected: true
+    });
+    
+    // Still call the parent component's handler if needed
+    onAddToCart(cartData.product);
+    
+    // Close modals
     showModal = false;
+    showAddToCartModal = false;
+    
+    // Show success overlay
+    showSuccessOverlay = true;
+  }
+
+  function closeSuccessOverlay() {
+    showSuccessOverlay = false;
   }
 
   // Calculate buyers count based on product ID for consistency
@@ -101,7 +126,10 @@
       <span class="text-lg font-bold text-[#21463E]">{formatPrice(product.price)}</span>
     </div>
     <button
-       on:click|stopPropagation={() => onAddToCart(product)}
+       on:click|stopPropagation={() => {
+         // Reset the AddToCartModal state when opening it
+         showAddToCartModal = true;
+       }}
        class="absolute bottom-4 right-4 px-4 py-2 bg-[#21463E] text-white rounded-md hover:bg-[#143129] transition-colors duration-200"
      >
        Add to Cart
@@ -123,4 +151,9 @@
   isOpen={showAddToCartModal}
   on:close={() => showAddToCartModal = false}
   on:addToCart={handleAddToCart}
+/>
+
+<AddToCartSuccess
+  isVisible={showSuccessOverlay}
+  on:close={closeSuccessOverlay}
 /> 

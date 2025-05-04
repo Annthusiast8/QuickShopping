@@ -3,6 +3,7 @@
   import type { Product } from '$lib/stores/products';
   import { mockReviews } from '$lib/mock/data';
   import AddToCartModal from './AddToCartModal.svelte';
+  import AddToCartSuccess from './Alerts.svelte';
   import { onMount } from 'svelte';
 
   export let product: Product;
@@ -12,6 +13,7 @@
 
   let activeTab: 'description' | 'reviews' = 'description';
   let showAddToCartModal: boolean = false;
+  let showSuccessOverlay: boolean = false;
 
   // Mock business profiles
   const mockBusinessProfiles: Record<string, { business_name: string; logo_url: null }> = {
@@ -78,6 +80,18 @@
       month: 'long',
       day: 'numeric'
     });
+  }
+
+  function handleAddToCart(event: CustomEvent) {
+    dispatch('addToCart', event.detail);
+    
+    // Show success overlay
+    showSuccessOverlay = true;
+    showAddToCartModal = false;
+  }
+
+  function closeSuccessOverlay() {
+    showSuccessOverlay = false;
   }
 </script>
 
@@ -255,5 +269,10 @@
   {product}
   isOpen={showAddToCartModal}
   on:close={() => showAddToCartModal = false}
-  on:addToCart={(event) => dispatch('addToCart', event.detail)}
+  on:addToCart={handleAddToCart}
+/>
+
+<AddToCartSuccess
+  isVisible={showSuccessOverlay}
+  on:close={closeSuccessOverlay}
 /> 

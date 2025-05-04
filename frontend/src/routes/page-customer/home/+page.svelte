@@ -4,6 +4,7 @@
     import { profileStore } from '$lib/stores/profile';
     import { productStore, type Product } from '$lib/stores/products';
     import ProductCard from '$lib/components/ProductCard.svelte';
+    import { cartStore } from '$lib/stores/cart';
 
     // Sample products for testing
     const sampleProducts: Product[] = [
@@ -20,7 +21,13 @@
             updated_at: null,
             rating: 5.0,
             review_count: 12,
-            category: "Electronics"
+            category: "Electronics",
+            variations: {
+                sizes: [13.3, 15.6, 17.3],
+                sizeType: 'numeric',
+                sizeUnit: 'inch',
+                colors: ['Black', 'Silver', 'Space Gray']
+            }
         },
         {
             id: 1,
@@ -35,7 +42,12 @@
             updated_at: null,
             rating: 4.5,
             review_count: 128,
-            category: "Electronics"
+            category: "Electronics",
+            variations: {
+                sizes: ['Standard', 'Compact'],
+                sizeType: 'standard',
+                colors: ['Black', 'White', 'Rose Gold', 'Blue']
+            }
         },
         {
             id: 2,
@@ -50,7 +62,13 @@
             updated_at: null,
             rating: 4.8,
             review_count: 256,
-            category: "Sports"
+            category: "Sports",
+            variations: {
+                sizes: [38, 40, 42, 44],
+                sizeType: 'numeric',
+                sizeUnit: 'mm',
+                colors: ['Black', 'Silver', 'Gold', 'Blue']
+            }
         },
         {
             id: 3,
@@ -65,7 +83,12 @@
             updated_at: null,
             rating: 4.2,
             review_count: 89,
-            category: "Electronics"
+            category: "Electronics",
+            variations: {
+                sizes: ['Mini', 'Standard', 'XL'],
+                sizeType: 'standard',
+                colors: ['Black', 'Blue', 'Red', 'Green']
+            }
         },
         {
             id: 4,
@@ -80,7 +103,12 @@
             updated_at: null,
             rating: 4.0,
             review_count: 45,
-            category: "Electronics"
+            category: "Electronics",
+            variations: {
+                sizes: [],
+                sizeType: 'standard',
+                colors: ['Black', 'White']
+            }
         }
     ];
 
@@ -283,8 +311,8 @@
     }
 
     function handleAddToCart(product: Product) {
-        // TODO: Implement add to cart functionality
-        console.log('Adding to cart:', product);
+        console.log('Product added to cart:', product);
+        // The actual adding to cart is now handled in ProductCard component via cartStore
     }
 </script>
 
