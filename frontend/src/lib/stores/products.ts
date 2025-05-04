@@ -15,6 +15,10 @@ export interface Product {
   rating?: number;
   review_count?: number;
   category?: string;
+  variations?: {
+    sizes: string[];
+    colors: string[];
+  };
 }
 
 function createProductStore() {

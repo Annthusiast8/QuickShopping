@@ -30,13 +30,19 @@
 
   // Profile menu state
   let showProfileMenu = false;
+  let profileMenuRef: HTMLDivElement;
 
   function toggleProfileMenu() {
     showProfileMenu = !showProfileMenu;
   }
 
+  function closeProfileMenu() {
+    showProfileMenu = false;
+  }
+
   function handleProfileClick(e: MouseEvent) {
     e.preventDefault();
+    e.stopPropagation();
     toggleProfileMenu();
   }
 
@@ -55,10 +61,32 @@
   let sortBy = 'none';
   let sortOrder = 'asc';
   let showCategoryAccordion = false;
+  let filterMenuRef: HTMLDivElement;
 
   function toggleFilterMenu() {
     showFilterMenu = !showFilterMenu;
   }
+
+  function closeFilterMenu() {
+    showFilterMenu = false;
+    showCategoryAccordion = false;
+  }
+
+  function handleClickOutside(event: MouseEvent) {
+    if (showFilterMenu && filterMenuRef && !filterMenuRef.contains(event.target as Node)) {
+      closeFilterMenu();
+    }
+    if (showProfileMenu && profileMenuRef && !profileMenuRef.contains(event.target as Node)) {
+      closeProfileMenu();
+    }
+  }
+
+  onMount(() => {
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  });
 
   function handleSort(option: string) {
     sortBy = option;
@@ -102,7 +130,10 @@
           {#if $page.url.pathname === '/page-customer/home'}
             <div class="relative mr-4">
               <button
-                on:click={toggleFilterMenu}
+                on:click={(e) => {
+                  e.stopPropagation();
+                  toggleFilterMenu();
+                }}
                 class="p-2 rounded-full hover:bg-gray-100 text-gray-600"
                 title="Filter and Sort"
               >
@@ -113,12 +144,16 @@
               
               <!-- Filter Dropdown Menu -->
               {#if showFilterMenu}
-                <div class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                <div 
+                  bind:this={filterMenuRef}
+                  on:click|stopPropagation
+                  class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10"
+                >
                   <div class="px-4 py-2 text-sm font-bold text-black border-b">
                     Sort by:
                   </div>
                   <button
-                    on:click={() => {
+                    on:click|stopPropagation={() => {
                       sortBy = 'name';
                       toggleSortOrder();
                     }}
@@ -127,7 +162,7 @@
                     {sortBy === 'name' ? `By name (${sortOrder === 'asc' ? 'a-z' : 'z-a'})` : 'By name (a-z)'}
                   </button>
                   <button
-                    on:click={() => {
+                    on:click|stopPropagation={() => {
                       sortBy = 'price';
                       toggleSortOrder();
                     }}
@@ -139,7 +174,7 @@
                   
                   <div class="border-t border-gray-200 mt-1">
                     <button
-                      on:click={toggleCategoryAccordion}
+                      on:click|stopPropagation={toggleCategoryAccordion}
                       class="flex justify-between items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       <span>Filter by Category</span>
@@ -157,7 +192,7 @@
                       <div class="pl-4">
                         {#each ['Electronics', 'Clothing', 'Home & Kitchen', 'Books', 'Sports', 'Beauty', 'Toys', 'Other'] as category}
                           <button
-                            on:click={() => {
+                            on:click|stopPropagation={() => {
                               const event = new CustomEvent('filterByCategory', {
                                 detail: { category }
                               });
@@ -173,6 +208,31 @@
                       </div>
                     {/if}
                   </div>
+                  
+                  <div class="border-t border-gray-200 mt-1">
+                    <button
+                      on:click|stopPropagation={() => {
+                        const event = new CustomEvent('removeFilters', {
+                          detail: {}
+                        });
+                        window.dispatchEvent(event);
+                        
+                        // Reset all local filter states
+                        sortBy = 'none';
+                        sortOrder = 'asc';
+                        showFilterMenu = false;
+                        
+                        // Find and clear search input
+                        const searchInput = document.querySelector('input[placeholder="Search product..."]') as HTMLInputElement;
+                        if (searchInput) {
+                          searchInput.value = '';
+                        }
+                      }}
+                      class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                    >
+                      Remove filter
+                    </button>
+                  </div>
                 </div>
               {/if}
             </div>
@@ -187,8 +247,9 @@
                   placeholder="Search product..."
                   class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#21463E] focus:border-transparent"
                   on:input={(e) => {
+                    const input = e.target as HTMLInputElement;
                     const event = new CustomEvent('searchProducts', {
-                      detail: { query: e.target.value }
+                      detail: { query: input.value }
                     });
                     window.dispatchEvent(event);
                   }}
@@ -240,7 +301,11 @@
 
             <!-- Profile Dropdown Menu -->
             {#if showProfileMenu}
-              <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+              <div 
+                bind:this={profileMenuRef}
+                on:click|stopPropagation
+                class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10"
+              >
                 <a
                   href="/page-customer/profile"
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -248,7 +313,7 @@
                   My Profile
                 </a>
                 <button
-                  on:click={logout}
+                  on:click|stopPropagation={logout}
                   class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                 >
                   Logout

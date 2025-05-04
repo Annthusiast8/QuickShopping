@@ -2,11 +2,41 @@
   import { createEventDispatcher } from 'svelte';
   import type { Product } from '$lib/stores/products';
   import { mockReviews } from '$lib/mock/data';
+  import AddToCartModal from './AddToCartModal.svelte';
+  import { onMount } from 'svelte';
 
   export let product: Product;
   export let isOpen: boolean = false;
+  export let sellerName: string = '';
+  export let buyersCount: number = 0;
 
   let activeTab: 'description' | 'reviews' = 'description';
+  let showAddToCartModal: boolean = false;
+
+  // Mock business profiles
+  const mockBusinessProfiles: Record<string, { business_name: string; logo_url: null }> = {
+    '1': { business_name: 'Fresh Produce Co.', logo_url: null },
+    '2': { business_name: 'Organic Delights', logo_url: null },
+    '3': { business_name: 'Farm Fresh Market', logo_url: null },
+    '4': { business_name: 'Local Harvest', logo_url: null },
+    '5': { business_name: 'Green Grocer', logo_url: null }
+  };
+
+  onMount(() => {
+    // Only fetch seller name if not already provided
+    if (!sellerName) {
+      // Use mock data instead of API call
+      const mockProfile = mockBusinessProfiles[product.seller_id.toString()];
+      if (mockProfile) {
+        sellerName = mockProfile.business_name;
+      }
+    }
+    
+    // Generate random buyers count if not provided
+    if (buyersCount === 0) {
+      buyersCount = Math.floor(Math.random() * 1000) + 10;
+    }
+  });
 
   const dispatch = createEventDispatcher();
 
@@ -19,9 +49,9 @@
   }
 
   function formatPrice(price: number): string {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-PH', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'PHP'
     }).format(price);
   }
 
@@ -106,15 +136,26 @@
             <span class="text-gray-600">({(product.rating || 0).toFixed(1)}/5.0 • {product.review_count || 0} reviews)</span>
           </div>
 
-          <p class="text-3xl font-bold text-[#21463E] mb-4">{formatPrice(product.price)}</p>
-          
-          <div class="mb-4">
-            <p class="text-gray-600">Stock: {product.stock} units available</p>
+          <div class="flex items-center gap-4 mb-4">
+            <div class="flex items-center">
+              <svg class="w-5 h-5 text-gray-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span class="text-gray-600">{buyersCount} buyers</span>
+            </div>
+            <p class="text-gray-600">Stock: {product.stock} pcs available</p>
           </div>
 
+          <div class="flex items-center gap-2 mb-4">
+            <span class="text-gray-600">Sold by:</span>
+            <span class="text-[#21463E] font-medium">{sellerName || 'Unknown Seller'}</span>
+          </div>
+
+          <p class="text-3xl font-bold text-[#21463E] mb-4">{formatPrice(product.price)}</p>
+          
           <div class="flex gap-2 mb-6">
             <button
-              on:click={() => dispatch('addToCart', product)}
+              on:click={() => showAddToCartModal = true}
               class="flex-1 px-6 py-3 bg-[#21463E] text-white rounded-md hover:bg-[#143129] transition-colors duration-200 font-semibold"
             >
               Add to Cart
@@ -162,7 +203,7 @@
               </div>
             {:else}
               <div class="space-y-6">
-                {#if product.review_count > 0}
+                {#if (product.review_count || 0) > 0}
                   {#each mockReviews as review}
                     <div class="border-b border-gray-200 pb-6">
                       <div class="flex items-start space-x-4">
@@ -208,4 +249,11 @@
       </div>
     </div>
   </div>
-{/if} 
+{/if}
+
+<AddToCartModal 
+  {product}
+  isOpen={showAddToCartModal}
+  on:close={() => showAddToCartModal = false}
+  on:addToCart={(event) => dispatch('addToCart', event.detail)}
+/> 

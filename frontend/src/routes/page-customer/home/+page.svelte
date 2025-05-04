@@ -2,27 +2,26 @@
     import { onMount } from 'svelte';
     import { auth } from '$lib/stores/auth';
     import { profileStore } from '$lib/stores/profile';
-    import { productStore } from '$lib/stores/products';
+    import { productStore, type Product } from '$lib/stores/products';
     import ProductCard from '$lib/components/ProductCard.svelte';
-
-    interface Product {
-        id: number;
-        seller_id: number;
-        name: string;
-        description: string | null;
-        price: number;
-        stock: number;
-        image_url: string;
-        is_active: boolean;
-        created_at: string;
-        updated_at: null;
-        rating: number;
-        review_count: number;
-        category?: string;
-    }
 
     // Sample products for testing
     const sampleProducts: Product[] = [
+        {
+            id: 5,
+            seller_id: 2,
+            name: "Newest Product - Gaming Laptop",
+            description: "High-performance gaming laptop with RTX 4080, 32GB RAM and 1TB SSD",
+            price: 1999.99,
+            stock: 5,
+            image_url: "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fGxhcHRvcHxlbnwwfHwwfHx8MA%3D%3D",
+            is_active: true,
+            created_at: "2024-05-15", // Most recent product
+            updated_at: null,
+            rating: 5.0,
+            review_count: 12,
+            category: "Electronics"
+        },
         {
             id: 1,
             seller_id: 1,
@@ -85,14 +84,28 @@
         }
     ];
 
-    let products = sampleProducts;
+    // Sort products by creation date (newest first)
+    function sortProductsByDate(productsToSort: Product[]): Product[] {
+        return [...productsToSort].sort((a, b) => {
+            const dateA = new Date(a.created_at).getTime();
+            const dateB = new Date(b.created_at).getTime();
+            return dateB - dateA; // Newest first
+        });
+    }
+
+    let products = sortProductsByDate(sampleProducts);
     let filteredProducts = products;
     let searchQuery = '';
     let selectedCategory: string | null = null;
+    let currentSort = { by: 'date', order: 'desc', label: 'Newest First' };
     const loading = false;
     const error = null;
 
     onMount(() => {
+        // Default to sorting by buyers count initially
+        sortProductsByBuyers();
+        currentSort = { by: 'buyers', order: 'desc', label: 'Most Popular' };
+
         window.addEventListener('searchProducts', ((event: CustomEvent) => {
             searchQuery = event.detail.query.toLowerCase();
             filterProducts();
@@ -100,16 +113,58 @@
 
         window.addEventListener('sortProducts', ((event: CustomEvent) => {
             const { sortBy, sortOrder } = event.detail;
+            
+            // Update the current sort
             if (sortBy === 'name') {
+                currentSort = { by: 'name', order: sortOrder, label: 'Name: A to Z' };
                 sortProductsByName(sortOrder);
             } else if (sortBy === 'price') {
+                currentSort = { 
+                    by: 'price', 
+                    order: sortOrder, 
+                    label: sortOrder === 'asc' ? 'Price: Low to High' : 'Price: High to Low' 
+                };
                 sortProductsByPrice(sortOrder);
+            } else if (sortBy === 'date') {
+                currentSort = { 
+                    by: 'date', 
+                    order: sortOrder, 
+                    label: sortOrder === 'asc' ? 'Oldest First' : 'Newest First' 
+                };
+                sortProductsByCreationDate(sortOrder);
+            } else if (sortBy === 'rating') {
+                currentSort = { 
+                    by: 'rating', 
+                    order: sortOrder, 
+                    label: sortOrder === 'asc' ? 'Lowest Rated' : 'Highest Rated' 
+                };
+                sortProductsByRating(sortOrder);
+            } else if (sortBy === 'buyers') {
+                currentSort = { 
+                    by: 'buyers', 
+                    order: sortOrder, 
+                    label: sortOrder === 'asc' ? 'Least Popular' : 'Most Popular' 
+                };
+                sortProductsByBuyers(sortOrder);
             }
         }) as EventListener);
 
         window.addEventListener('filterByCategory', ((event: CustomEvent) => {
             selectedCategory = event.detail.category;
             filterProducts();
+        }) as EventListener);
+
+        window.addEventListener('removeFilters', (() => {
+            // Reset all filters and sorting
+            searchQuery = '';
+            selectedCategory = null;
+            currentSort = { by: 'buyers', order: 'desc', label: 'Most Popular' }; 
+            filteredProducts = [...products].sort((a, b) => {
+                // Calculate buyers count consistently based on product ID
+                const buyersCountA = (a.id * 123) % 1000 + 50;
+                const buyersCountB = (b.id * 123) % 1000 + 50;
+                return buyersCountB - buyersCountA; // Most buyers first
+            });
         }) as EventListener);
     });
 
@@ -131,8 +186,41 @@
         });
     }
 
+    function sortProductsByCreationDate(order: string) {
+        filteredProducts = [...filteredProducts].sort((a, b) => {
+            const dateA = new Date(a.created_at).getTime();
+            const dateB = new Date(b.created_at).getTime();
+            return order === 'asc'
+                ? dateA - dateB // Oldest first
+                : dateB - dateA; // Newest first
+        });
+    }
+
+    function sortProductsByRating(order: string = 'desc') {
+        filteredProducts = [...filteredProducts].sort((a, b) => {
+            const ratingA = a.rating || 0;
+            const ratingB = b.rating || 0;
+            return order === 'asc'
+                ? ratingA - ratingB // Lowest first
+                : ratingB - ratingA; // Highest first
+        });
+    }
+
+    // New function to sort by buyers count
+    function sortProductsByBuyers(order: string = 'desc') {
+        // Use the same buyer count calculation as in ProductCard
+        filteredProducts = [...filteredProducts].sort((a, b) => {
+            // Calculate buyers count consistently based on product ID
+            const buyersCountA = (a.id * 123) % 1000 + 50;
+            const buyersCountB = (b.id * 123) % 1000 + 50;
+            return order === 'asc'
+                ? buyersCountA - buyersCountB // Least buyers first
+                : buyersCountB - buyersCountA; // Most buyers first
+        });
+    }
+
     function filterProducts() {
-        let tempProducts = products;
+        let tempProducts = [...products];
 
         // Apply category filter
         if (selectedCategory) {
@@ -149,6 +237,48 @@
             );
         }
 
+        // Apply current sort
+        if (currentSort.by === 'name') {
+            tempProducts = tempProducts.sort((a, b) => {
+                const nameA = a.name.toLowerCase();
+                const nameB = b.name.toLowerCase();
+                return currentSort.order === 'asc' 
+                    ? nameA.localeCompare(nameB)
+                    : nameB.localeCompare(nameA);
+            });
+        } else if (currentSort.by === 'price') {
+            tempProducts = tempProducts.sort((a, b) => {
+                return currentSort.order === 'asc' 
+                    ? a.price - b.price // Low to high
+                    : b.price - a.price; // High to low
+            });
+        } else if (currentSort.by === 'date') {
+            tempProducts = tempProducts.sort((a, b) => {
+                const dateA = new Date(a.created_at).getTime();
+                const dateB = new Date(b.created_at).getTime();
+                return currentSort.order === 'asc'
+                    ? dateA - dateB // Oldest first
+                    : dateB - dateA; // Newest first
+            });
+        } else if (currentSort.by === 'rating') {
+            tempProducts = tempProducts.sort((a, b) => {
+                const ratingA = a.rating || 0;
+                const ratingB = b.rating || 0;
+                return currentSort.order === 'asc'
+                    ? ratingA - ratingB // Lowest first
+                    : ratingB - ratingA; // Highest first
+            });
+        } else if (currentSort.by === 'buyers') {
+            tempProducts = tempProducts.sort((a, b) => {
+                // Calculate buyers count consistently based on product ID
+                const buyersCountA = (a.id * 123) % 1000 + 50;
+                const buyersCountB = (b.id * 123) % 1000 + 50;
+                return currentSort.order === 'asc'
+                    ? buyersCountA - buyersCountB // Least buyers first
+                    : buyersCountB - buyersCountA; // Most buyers first
+            });
+        }
+
         filteredProducts = tempProducts;
     }
 
@@ -160,6 +290,65 @@
 
 <div class="container mx-auto p-4">
     <h1 class="text-2xl font-bold mb-6">Browse Products</h1>
+
+    <!-- Sort controls -->
+    <div class="flex justify-end mb-4">
+        <div class="relative inline-block text-left">
+            <button type="button" class="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none" 
+                on:click={() => document.getElementById('sort-menu')?.classList.toggle('hidden')}
+            >
+                Sort by:
+                <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+            </button>
+            <div id="sort-menu" class="hidden origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                <div class="py-1" role="menu" aria-orientation="vertical">
+                    <button 
+                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900" 
+                        role="menuitem"
+                        on:click={() => {
+                            window.dispatchEvent(new CustomEvent('sortProducts', { detail: { sortBy: 'rating', sortOrder: 'desc' } }));
+                            document.getElementById('sort-menu')?.classList.add('hidden');
+                        }}
+                    >
+                        Top Rated
+                    </button>
+                    <button 
+                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900" 
+                        role="menuitem"
+                        on:click={() => {
+                            window.dispatchEvent(new CustomEvent('sortProducts', { detail: { sortBy: 'date', sortOrder: 'desc' } }));
+                            document.getElementById('sort-menu')?.classList.add('hidden');
+                        }}
+                    >
+                        Newest First
+                    </button>
+                    <button 
+                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900" 
+                        role="menuitem"
+                        on:click={() => {
+                            window.dispatchEvent(new CustomEvent('sortProducts', { detail: { sortBy: 'date', sortOrder: 'asc' } }));
+                            document.getElementById('sort-menu')?.classList.add('hidden');
+                        }}
+                    >
+                        Oldest First
+                    </button>
+                    <button 
+                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900" 
+                        role="menuitem"
+                        on:click={() => {
+                            window.dispatchEvent(new CustomEvent('removeFilters'));
+                            document.getElementById('sort-menu')?.classList.add('hidden');
+                        }}
+                    >
+                        Remove Sort
+                    </button>
+
+                </div>
+            </div>
+        </div>
+    </div>
 
     {#if loading}
         <div class="flex justify-center items-center h-64">
