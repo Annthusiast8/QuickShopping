@@ -5,7 +5,7 @@
   import { onMount } from 'svelte';
 
   // Check if user is logged in and is admin (COMMENT)
-  onMount(() => {
+  /*onMount(() => {
     if (!$auth.isAuthenticated) {
       goto('/login');
       return;
@@ -14,7 +14,7 @@
     if ($auth.user && $auth.user.role !== 'admin') {
       goto('/login');
     }
-  });
+  });*/
 
   function logout() {
     auth.logout();

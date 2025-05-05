@@ -87,19 +87,19 @@
 </script>
 
 <div 
-  class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
+  class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer h-full flex flex-col w-full"
   on:click={() => showModal = true}
   on:keydown={(e) => e.key === 'Enter' && (showModal = true)}
   role="button"
   tabindex="0"
 >
   <!-- Product Image -->
-  <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200">
+  <div class="w-full overflow-hidden bg-gray-200">
     {#if product.image_url}
-      <img src={product.image_url} alt={product.name} class="object-cover w-full h-48" />
+      <img src={product.image_url} alt={product.name} class="object-cover w-full h-48 md:h-56 lg:h-64" />
     {:else}
-      <div class="w-full h-48 flex items-center justify-center bg-gray-100">
-        <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="w-full h-48 md:h-56 lg:h-64 flex items-center justify-center bg-gray-100">
+        <svg class="w-10 h-10 md:w-12 md:h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
       </div>
@@ -107,33 +107,24 @@
   </div>
 
   <!-- Product Info -->
-  <div class="p-4 relative min-h-[180px]">
-    <h3 class="text-lg font-semibold text-gray-900 mb-1">{product.name}</h3>
-    <div class="flex items-center gap-2 mb-2">
-      <span class="inline-block px-2 py-1 text-xs font-semibold text-[#21463E] bg-[#21463E]/10 rounded-full">{product.category}</span>
+  <div class="p-3 md:p-4 flex-grow flex flex-col">
+    <h3 class="text-base md:text-lg font-semibold text-gray-900 mb-1 line-clamp-2">{product.name}</h3>
+    <div class="flex flex-wrap items-center gap-1 md:gap-2 mb-1 md:mb-2">
+      <span class="inline-block px-2 py-0.5 text-xs font-semibold text-[#21463E] bg-[#21463E]/10 rounded-full">{product.category}</span>
     </div>
-    <div class="flex items-center mb-2">
-      <span class="text-yellow-500 text-lg mr-1">{renderStars(product.rating || 0)}</span>
-      <span class="text-gray-500 text-sm">({(product.rating || 0).toFixed(1)}/5.0 • {product.review_count || 0} reviews)</span>
+    <div class="flex items-center mb-1 md:mb-2">
+      <span class="text-yellow-500 text-sm md:text-base lg:text-lg mr-1">{renderStars(product.rating || 0)}</span>
+      <span class="text-gray-500 text-xs md:text-sm">({(product.rating || 0).toFixed(1)}/5.0)</span>
     </div>
-    <div class="flex items-center text-gray-500 text-sm mb-2">
-      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="flex items-center text-gray-500 text-xs md:text-sm mb-1 md:mb-2">
+      <svg class="w-3 h-3 md:w-4 md:h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
       </svg>
       <span>{buyersCount} buyers</span>
     </div>
-    <div class="flex items-center justify-between mt-2">
-      <span class="text-lg font-bold text-[#21463E]">{formatPrice(product.price)}</span>
+    <div class="flex items-center justify-between mt-auto">
+      <span class="text-base md:text-lg font-bold text-[#21463E]">{formatPrice(product.price)}</span>
     </div>
-    <button
-       on:click|stopPropagation={() => {
-         // Reset the AddToCartModal state when opening it
-         showAddToCartModal = true;
-       }}
-       class="absolute bottom-4 right-4 px-4 py-2 bg-[#21463E] text-white rounded-md hover:bg-[#143129] transition-colors duration-200"
-     >
-       Add to Cart
-     </button>
   </div>
 </div>
 

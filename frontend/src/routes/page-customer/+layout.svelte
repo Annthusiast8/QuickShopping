@@ -6,7 +6,7 @@
   import CartIndicator from '$lib/components/CartIndicator.svelte';
 
   //*Check if user is logged in and is a customer (COMMENT)
-  onMount(() => {
+  /*onMount(() => {
     if (!$auth.isAuthenticated) {
       goto('/login');
       return;
@@ -15,7 +15,7 @@
     if ($auth.user && $auth.user.role !== 'customer') {
       goto('/login');
     }
-  });
+  }); */
 
   function logout() {
     auth.logout();
@@ -114,8 +114,8 @@
   <nav class="bg-[#789DBC] shadow-md">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between items-center h-16">
-        <!-- Logo -->
-        <div class="flex-shrink-0">
+        <!-- Logo - Hidden on mobile -->
+        <div class="flex-shrink-0 hidden sm:block">
           <a href="/page-customer/home" class="flex items-center">
             <h1 class="text-2xl font-bold text-[#fffff]">
               Quick<span class="text-yellow-500">Buy</span>
@@ -124,118 +124,9 @@
         </div>
 
         <!-- Filter and Search Section -->
-        <div class="flex-1 max-w-2xl mx-8 flex items-center">
+        <div class="flex-1 max-w-full sm:max-w-2xl sm:mx-8 flex items-center">
           <!-- Filter Button - Only show on home page -->
-          {#if $page.url.pathname === '/page-customer/home'}
-            <div class="relative mr-4">
-              <button
-                on:click={(e) => {
-                  e.stopPropagation();
-                  toggleFilterMenu();
-                }}
-                class="p-2 rounded-full hover:bg-gray-100 text-gray-600"
-                title="Filter and Sort"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                </svg>
-              </button>
-              
-              <!-- Filter Dropdown Menu -->
-              {#if showFilterMenu}
-                <div 
-                  bind:this={filterMenuRef}
-                  on:click|stopPropagation
-                  class="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10"
-                >
-                  <div class="px-4 py-2 text-sm font-bold text-black border-b">
-                    Sort by:
-                  </div>
-                  <button
-                    on:click|stopPropagation={() => {
-                      sortBy = 'name';
-                      toggleSortOrder();
-                    }}
-                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    {sortBy === 'name' ? `By name (${sortOrder === 'asc' ? 'a-z' : 'z-a'})` : 'By name (a-z)'}
-                  </button>
-                  <button
-                    on:click|stopPropagation={() => {
-                      sortBy = 'price';
-                      toggleSortOrder();
-                    }}
-                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    {sortBy === 'price' ? `Price ${sortOrder === 'asc' ? '↑' : '↓' }` : 'Price ↓'}
-                  </button>
-                 
-                  
-                  <div class="border-t border-gray-200 mt-1">
-                    <button
-                      on:click|stopPropagation={toggleCategoryAccordion}
-                      class="flex justify-between items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      <span>Filter by Category</span>
-                      <svg
-                        class={`w-4 h-4 transform transition-transform ${showCategoryAccordion ? 'rotate-180' : ''}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                    
-                    {#if showCategoryAccordion}
-                      <div class="pl-4">
-                        {#each ['Electronics', 'Clothing', 'Home & Kitchen', 'Books', 'Sports', 'Beauty', 'Toys', 'Other'] as category}
-                          <button
-                            on:click|stopPropagation={() => {
-                              const event = new CustomEvent('filterByCategory', {
-                                detail: { category }
-                              });
-                              window.dispatchEvent(event);
-                              showCategoryAccordion = false;
-                              showFilterMenu = false;
-                            }}
-                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          >
-                            {category}
-                          </button>
-                        {/each}
-                      </div>
-                    {/if}
-                  </div>
-                  
-                  <div class="border-t border-gray-200 mt-1">
-                    <button
-                      on:click|stopPropagation={() => {
-                        const event = new CustomEvent('removeFilters', {
-                          detail: {}
-                        });
-                        window.dispatchEvent(event);
-                        
-                        // Reset all local filter states
-                        sortBy = 'none';
-                        sortOrder = 'asc';
-                        showFilterMenu = false;
-                        
-                        // Find and clear search input
-                        const searchInput = document.querySelector('input[placeholder="Search product..."]') as HTMLInputElement;
-                        if (searchInput) {
-                          searchInput.value = '';
-                        }
-                      }}
-                      class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                    >
-                      Remove filter
-                    </button>
-                  </div>
-                </div>
-              {/if}
-            </div>
-          {/if}
+          
 
           <!-- Search Bar - Hide on profile page -->
           {#if $page.url.pathname !== '/page-customer/profile'}
@@ -244,7 +135,7 @@
                 <input
                   type="text"
                   placeholder="Search product..."
-                  class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#21463E] focus:border-transparent"
+                  class="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#21463E] focus:border-transparent"
                   on:input={(e) => {
                     const input = e.target as HTMLInputElement;
                     const event = new CustomEvent('searchProducts', {
@@ -253,8 +144,8 @@
                     window.dispatchEvent(event);
                   }}
                 />
-                <button class="absolute right-3 top-2.5 text-gray-400 hover:text-[#21463E]">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button class="absolute right-2 sm:right-3 top-1.5 sm:top-2.5 text-gray-400 hover:text-[#21463E]">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </button>
@@ -264,14 +155,14 @@
         </div>
 
         <!-- Navigation Icons -->
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-1 sm:space-x-4">
           {#each navItems as item}
             <a
               href={item.href}
-              class="p-2 rounded-full hover:bg-gray-100 {isActive(item.href) ? 'text-[#dad736]' : 'text-gray-600'}"
+              class="p-1.5 sm:p-2 rounded-full hover:bg-gray-100 {isActive(item.href) ? 'text-[#dad736]' : 'text-gray-600'}"
               title={item.label}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 {#if item.icon === 'chart-pie'}
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
@@ -289,7 +180,7 @@
           {/each}
 
           <!-- Cart with count indicator -->
-          <div class="p-2 rounded-full hover:bg-gray-100 {isActive('/page-customer/cart') ? 'text-[#dad736]' : 'text-gray-600'}">
+          <div class="p-1.5 sm:p-2 rounded-full hover:bg-gray-100 {isActive('/page-customer/cart') ? 'text-[#dad736]' : 'text-gray-600'}">
             <CartIndicator />
           </div>
 
@@ -297,10 +188,10 @@
           <div class="relative">
             <button
               on:click={handleProfileClick}
-              class="p-2 rounded-full hover:bg-gray-100 {isActive('/page-customer/profile') ? 'text-[#dad736]' : 'text-gray-600'}"
+              class="p-1.5 sm:p-2 rounded-full hover:bg-gray-100 {isActive('/page-customer/profile') ? 'text-[#dad736]' : 'text-gray-600'}"
               title="Profile"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </button>
@@ -331,20 +222,6 @@
       </div>
     </div>
   </nav>
-
-  <!-- Mobile Navigation (Hamburger Menu) -->
-  <div class="sm:hidden">
-    <div class="px-2 pt-2 pb-3 space-y-1">
-      {#each navItems as item}
-        <a
-          href={item.href}
-          class="block px-3 py-2 rounded-md text-base font-medium {isActive(item.href) ? 'bg-[#21463E] text-white' : 'text-gray-600 hover:bg-gray-100'}"
-        >
-          {item.label}
-        </a>
-      {/each}
-    </div>
-  </div>
 
   <!-- Main Content -->
   <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">

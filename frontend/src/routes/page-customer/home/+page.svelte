@@ -112,6 +112,26 @@
         }
     ];
 
+    // Categories based on products
+    const categories = [
+        { id: 'electronics', name: 'Electronics', count: sampleProducts.filter(p => p.category === 'Electronics').length },
+        { id: 'clothing', name: 'Clothing', count: 28 },
+        { id: 'home-kitchen', name: 'Home & Kitchen', count: 42 },
+        { id: 'beauty-health', name: 'Beauty & Health', count: 35 },
+        { id: 'gaming', name: 'Gaming', count: 17 },
+    ];
+
+    // Sort options
+    const sortOptions = [
+        { id: 'best-sellers', name: 'Best Sellers', sortBy: 'buyers', sortOrder: 'desc' },
+        { id: 'price-low-high', name: 'Price: Low to High', sortBy: 'price', sortOrder: 'asc' },
+        { id: 'price-high-low', name: 'Price: High to Low', sortBy: 'price', sortOrder: 'desc' },
+        { id: 'newest', name: 'New Arrivals', sortBy: 'date', sortOrder: 'desc' }
+    ];
+
+    // Track selected sort options
+    let selectedSortOptions = new Set(['best-sellers']);
+
     // Sort products by creation date (newest first)
     function sortProductsByDate(productsToSort: Product[]): Product[] {
         return [...productsToSort].sort((a, b) => {
@@ -128,6 +148,11 @@
     let currentSort = { by: 'date', order: 'desc', label: 'Newest First' };
     const loading = false;
     const error = null;
+    
+    // UI state
+    let isCategoryExpanded = true;
+    let isSortExpanded = true;
+    let isFilterSidebarVisible = false; // Control mobile sidebar visibility
 
     onMount(() => {
         // Default to sorting by buyers count initially
@@ -187,14 +212,38 @@
             searchQuery = '';
             selectedCategory = null;
             currentSort = { by: 'buyers', order: 'desc', label: 'Most Popular' }; 
-            filteredProducts = [...products].sort((a, b) => {
-                // Calculate buyers count consistently based on product ID
-                const buyersCountA = (a.id * 123) % 1000 + 50;
-                const buyersCountB = (b.id * 123) % 1000 + 50;
-                return buyersCountB - buyersCountA; // Most buyers first
-            });
+            selectedSortOptions = new Set(['best-sellers']);
+            filterProducts();
         }) as EventListener);
+        
+        // Close sidebar on window resize if it's a larger screen
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) { // md breakpoint
+                isFilterSidebarVisible = false;
+            }
+        });
+        
+        // Close sidebar when clicking outside
+        document.addEventListener('click', (event) => {
+            const sidebar = document.getElementById('mobile-filter-sidebar');
+            const toggleButton = document.getElementById('filter-toggle-button');
+            
+            if (isFilterSidebarVisible && sidebar && !sidebar.contains(event.target as Node) && 
+                toggleButton && !toggleButton.contains(event.target as Node)) {
+                isFilterSidebarVisible = false;
+            }
+        });
     });
+
+    function toggleFilterSidebar() {
+        isFilterSidebarVisible = !isFilterSidebarVisible;
+        // Add overflow hidden to body when filter is visible to prevent scrolling behind the dropdown
+        if (isFilterSidebarVisible) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+    }
 
     function sortProductsByName(order: string) {
         filteredProducts = [...filteredProducts].sort((a, b) => {
@@ -209,8 +258,8 @@
     function sortProductsByPrice(order: string) {
         filteredProducts = [...filteredProducts].sort((a, b) => {
             return order === 'asc' 
-                ? b.price - a.price // High to low
-                : a.price - b.price; // Low to high
+                ? a.price - b.price // Low to high
+                : b.price - a.price; // High to low
         });
     }
 
@@ -265,141 +314,365 @@
             );
         }
 
-        // Apply current sort
-        if (currentSort.by === 'name') {
-            tempProducts = tempProducts.sort((a, b) => {
-                const nameA = a.name.toLowerCase();
-                const nameB = b.name.toLowerCase();
-                return currentSort.order === 'asc' 
-                    ? nameA.localeCompare(nameB)
-                    : nameB.localeCompare(nameA);
-            });
-        } else if (currentSort.by === 'price') {
-            tempProducts = tempProducts.sort((a, b) => {
-                return currentSort.order === 'asc' 
-                    ? a.price - b.price // Low to high
-                    : b.price - a.price; // High to low
-            });
-        } else if (currentSort.by === 'date') {
-            tempProducts = tempProducts.sort((a, b) => {
-                const dateA = new Date(a.created_at).getTime();
-                const dateB = new Date(b.created_at).getTime();
-                return currentSort.order === 'asc'
-                    ? dateA - dateB // Oldest first
-                    : dateB - dateA; // Newest first
-            });
-        } else if (currentSort.by === 'rating') {
-            tempProducts = tempProducts.sort((a, b) => {
-                const ratingA = a.rating || 0;
-                const ratingB = b.rating || 0;
-                return currentSort.order === 'asc'
-                    ? ratingA - ratingB // Lowest first
-                    : ratingB - ratingA; // Highest first
-            });
-        } else if (currentSort.by === 'buyers') {
-            tempProducts = tempProducts.sort((a, b) => {
-                // Calculate buyers count consistently based on product ID
-                const buyersCountA = (a.id * 123) % 1000 + 50;
-                const buyersCountB = (b.id * 123) % 1000 + 50;
-                return currentSort.order === 'asc'
-                    ? buyersCountA - buyersCountB // Least buyers first
-                    : buyersCountB - buyersCountA; // Most buyers first
-            });
+        // Apply multiple sort criteria
+        if (selectedSortOptions.size > 0) {
+            // Convert to array for stable sorting
+            let sortingCriteria = Array.from(selectedSortOptions)
+                .map(id => sortOptions.find(opt => opt.id === id))
+                .filter(opt => opt !== undefined);
+            
+            // Apply each sort criterion in order
+            if (sortingCriteria.length > 0) {
+                tempProducts = applySortingCriteria(tempProducts, sortingCriteria);
+            }
         }
 
         filteredProducts = tempProducts;
+    }
+
+    function applySortingCriteria(products: Product[], criteria: any[]) {
+        // Start with a copy of the products
+        let sortedProducts = [...products];
+        
+        // Apply each criterion in order
+        for (const criterion of criteria) {
+            if (criterion.sortBy === 'name') {
+                sortedProducts = sortedProducts.sort((a, b) => {
+                    const nameA = a.name.toLowerCase();
+                    const nameB = b.name.toLowerCase();
+                    return criterion.sortOrder === 'asc' 
+                        ? nameA.localeCompare(nameB)
+                        : nameB.localeCompare(nameA);
+                });
+            } else if (criterion.sortBy === 'price') {
+                sortedProducts = sortedProducts.sort((a, b) => {
+                    return criterion.sortOrder === 'asc' 
+                        ? a.price - b.price // Low to high
+                        : b.price - a.price; // High to low
+                });
+            } else if (criterion.sortBy === 'date') {
+                sortedProducts = sortedProducts.sort((a, b) => {
+                    const dateA = new Date(a.created_at).getTime();
+                    const dateB = new Date(b.created_at).getTime();
+                    return criterion.sortOrder === 'asc'
+                        ? dateA - dateB // Oldest first
+                        : dateB - dateA; // Newest first
+                });
+            } else if (criterion.sortBy === 'rating') {
+                sortedProducts = sortedProducts.sort((a, b) => {
+                    const ratingA = a.rating || 0;
+                    const ratingB = b.rating || 0;
+                    return criterion.sortOrder === 'asc'
+                        ? ratingA - ratingB // Lowest first
+                        : ratingB - ratingA; // Highest first
+                });
+            } else if (criterion.sortBy === 'buyers') {
+                sortedProducts = sortedProducts.sort((a, b) => {
+                    // Calculate buyers count consistently based on product ID
+                    const buyersCountA = (a.id * 123) % 1000 + 50;
+                    const buyersCountB = (b.id * 123) % 1000 + 50;
+                    return criterion.sortOrder === 'asc'
+                        ? buyersCountA - buyersCountB // Least buyers first
+                        : buyersCountB - buyersCountA; // Most buyers first
+                });
+            }
+        }
+        
+        return sortedProducts;
     }
 
     function handleAddToCart(product: Product) {
         console.log('Product added to cart:', product);
         // The actual adding to cart is now handled in ProductCard component via cartStore
     }
+
+    function handleCategorySelect(category: string) {
+        selectedCategory = category === selectedCategory ? null : category;
+        filterProducts();
+        // Close mobile sidebar after selection on small screens
+        if (window.innerWidth < 768) {
+            isFilterSidebarVisible = false;
+        }
+    }
+
+    function handleSortOptionToggle(option: {id: string, sortBy: string, sortOrder: string, name: string}) {
+        // Toggle the option in the set
+        if (selectedSortOptions.has(option.id)) {
+            selectedSortOptions.delete(option.id);
+            // Ensure at least one option is selected
+            if (selectedSortOptions.size === 0) {
+                selectedSortOptions.add('best-sellers');
+            }
+        } else {
+            // For price sorting, ensure only one price option can be selected
+            if (option.sortBy === 'price') {
+                // Remove any existing price sort options
+                sortOptions.forEach(opt => {
+                    if (opt.sortBy === 'price') {
+                        selectedSortOptions.delete(opt.id);
+                    }
+                });
+            }
+            selectedSortOptions.add(option.id);
+        }
+        
+        // Force Svelte to recognize the change
+        selectedSortOptions = new Set(selectedSortOptions);
+        
+        // Apply the sorting
+        filterProducts();
+        
+        // Close mobile sidebar after selection on small screens
+        if (window.innerWidth < 768) {
+            isFilterSidebarVisible = false;
+        }
+    }
 </script>
 
-<div class="container mx-auto p-4">
-    <h1 class="text-2xl font-bold mb-6">Browse Products</h1>
-
-    <!-- Sort controls -->
-    <div class="flex justify-end mb-4">
-        <div class="relative inline-block text-left">
-            <button type="button" class="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none" 
-                on:click={() => document.getElementById('sort-menu')?.classList.toggle('hidden')}
-            >
-                Sort by:
-                <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                </svg>
-            </button>
-            <div id="sort-menu" class="hidden origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                <div class="py-1" role="menu" aria-orientation="vertical">
-                    <button 
-                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900" 
-                        role="menuitem"
-                        on:click={() => {
-                            window.dispatchEvent(new CustomEvent('sortProducts', { detail: { sortBy: 'rating', sortOrder: 'desc' } }));
-                            document.getElementById('sort-menu')?.classList.add('hidden');
-                        }}
-                    >
-                        Top Rated
-                    </button>
-                    <button 
-                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900" 
-                        role="menuitem"
-                        on:click={() => {
-                            window.dispatchEvent(new CustomEvent('sortProducts', { detail: { sortBy: 'date', sortOrder: 'desc' } }));
-                            document.getElementById('sort-menu')?.classList.add('hidden');
-                        }}
-                    >
-                        Newest First
-                    </button>
-                    <button 
-                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900" 
-                        role="menuitem"
-                        on:click={() => {
-                            window.dispatchEvent(new CustomEvent('sortProducts', { detail: { sortBy: 'date', sortOrder: 'asc' } }));
-                            document.getElementById('sort-menu')?.classList.add('hidden');
-                        }}
-                    >
-                        Oldest First
-                    </button>
-                    <button 
-                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900" 
-                        role="menuitem"
-                        on:click={() => {
-                            window.dispatchEvent(new CustomEvent('removeFilters'));
-                            document.getElementById('sort-menu')?.classList.add('hidden');
-                        }}
-                    >
-                        Remove Sort
-                    </button>
-
-                </div>
-            </div>
+<div class="relative">
+    <!-- Filter Toggle Button (Mobile) -->
+    <div class="md:hidden bg-[#F5ECD5] sticky top-0 z-10 mb-4 py-2 px-4 shadow-sm flex justify-between items-center">
+        <button 
+            id="filter-toggle-button"
+            class="bg-[#789DBC] text-white px-4 py-2 rounded-md flex items-center space-x-1"
+            on:click|stopPropagation={toggleFilterSidebar}
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <span>Filters</span>
+        </button>
+        <div class="text-gray-700">
+            <span class="text-sm font-medium">Sort: </span>
+            <span class="text-sm">{currentSort.label}</span>
         </div>
     </div>
 
-    {#if loading}
-        <div class="flex justify-center items-center h-64">
-            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#21463E]"></div>
-        </div>
-    {:else if error}
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-            <strong class="font-bold">Error!</strong>
-            <span class="block sm:inline"> {error}</span>
-        </div>
-    {:else if filteredProducts.length === 0}
-        <div class="text-center py-10">
-            <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-            </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">No products found</h3>
-            <p class="mt-1 text-sm text-gray-500">Try adjusting your search or filters.</p>
-        </div>
-    {:else}
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {#each filteredProducts as product}
-                <ProductCard {product} onAddToCart={handleAddToCart} />
-            {/each}
+    <!-- Mobile Filter Sidebar (overlay) -->
+    {#if isFilterSidebarVisible}
+        <!-- Overlay background -->
+        <div 
+            class="md:hidden fixed inset-0 z-30 bg-black bg-opacity-50"
+            on:click={() => isFilterSidebarVisible = false}
+        ></div>
+        <div 
+            id="mobile-filter-sidebar"
+            class="md:hidden fixed inset-x-0 top-14 z-40 bg-white shadow-lg animate-slide-down"
+        >
+            <div class="max-w-full max-h-[calc(100vh-14rem)] overflow-y-auto p-4 transform transition-transform duration-300 ease-in-out">
+                <!-- Categories Section -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-3 cursor-pointer" on:click={() => isCategoryExpanded = !isCategoryExpanded}>
+                        <h2 class="font-bold text-gray-700 uppercase text-sm">CATEGORIES</h2>
+                        <span class="text-sm text-gray-500">
+                            {isCategoryExpanded ? '▼' : '▶'}
+                        </span>
+                    </div>
+                    {#if isCategoryExpanded}
+                        <ul class="space-y-2">
+                            {#each categories as category}
+                                <li>
+                                    <button 
+                                        class="w-full text-left flex items-center justify-between py-1 px-2 rounded hover:bg-gray-200 transition-colors {selectedCategory === category.name ? 'bg-gray-200 font-medium' : ''}"
+                                        on:click={() => handleCategorySelect(category.name)}
+                                    >
+                                        <span class="text-sm">{category.name}</span>
+                                        <span class="text-xs text-gray-500">{category.count}</span>
+                                    </button>
+                                </li>
+                            {/each}
+                            <li>
+                                <button class="text-gray-500 hover:text-gray-700 text-sm pt-1 pl-2">
+                                    View More
+                                </button>
+                            </li>
+                        </ul>
+                    {/if}
+                </div>
+                
+                <!-- Sort By Section -->
+                <div>
+                    <div class="flex justify-between items-center mb-3 cursor-pointer" on:click={() => isSortExpanded = !isSortExpanded}>
+                        <h2 class="font-bold text-gray-700 uppercase text-sm">SORT BY</h2>
+                        <span class="text-sm text-gray-500">
+                            {isSortExpanded ? '▼' : '▶'}
+                        </span>
+                    </div>
+                    {#if isSortExpanded}
+                        <ul class="space-y-2">
+                            {#each sortOptions as option}
+                                <li>
+                                    <label 
+                                        class="w-full text-left py-1 px-2 rounded hover:bg-gray-200 transition-colors text-sm flex items-center"
+                                    >
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedSortOptions.has(option.id)} 
+                                            on:change={() => handleSortOptionToggle(option)}
+                                            class="mr-2"
+                                        />
+                                        {option.name}
+                                    </label>
+                                </li>
+                            {/each}
+                        </ul>
+                    {/if}
+                </div>
+                
+                <!-- Remove Filter Button for Mobile -->
+                <button 
+                    class="mt-6 mb-3 w-full bg-[#789DBC] text-white py-2 rounded-md flex justify-center items-center"
+                    on:click={() => {
+                        window.dispatchEvent(new CustomEvent('removeFilters'));
+                        isFilterSidebarVisible = false;
+                    }}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Remove Filters
+                </button>
+                
+                <!-- Close button -->
+                <button 
+                    class="mt-6 w-full bg-red-500 text-white py-2 rounded-md"
+                    on:click={() => isFilterSidebarVisible = false}
+                >
+                    Close
+                </button>
+            </div>
         </div>
     {/if}
+
+    <div class="flex">
+        <!-- Desktop Sidebar - Hidden on mobile, positioned at left edge -->
+        <div class="hidden md:block w-56 bg-gray-100 p-4 shadow-md fixed left-0 overflow-y-auto z-20 top-[var(--navbar-height)] h-[100vh] max-h-[calc(100vh-var(--navbar-height))]">
+            <!-- Categories Section -->
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-3 cursor-pointer" on:click={() => isCategoryExpanded = !isCategoryExpanded}>
+                    <h2 class="font-bold text-gray-700 uppercase text-sm">CATEGORIES</h2>
+                    <span class="text-sm text-gray-500">
+                        {isCategoryExpanded ? '▼' : '▶'}
+                    </span>
+                </div>
+                {#if isCategoryExpanded}
+                    <ul class="space-y-2">
+                        {#each categories as category}
+                            <li>
+                                <button 
+                                    class="w-full text-left flex items-center justify-between py-1 px-2 rounded hover:bg-gray-200 transition-colors {selectedCategory === category.name ? 'bg-gray-200 font-medium' : ''}"
+                                    on:click={() => handleCategorySelect(category.name)}
+                                >
+                                    <span class="text-sm">{category.name}</span>
+                                    <span class="text-xs text-gray-500">{category.count}</span>
+                                </button>
+                            </li>
+                        {/each}
+                        <li>
+                            <button class="text-gray-500 hover:text-gray-700 text-sm pt-1 pl-2">
+                                View More
+                            </button>
+                        </li>
+                    </ul>
+                {/if}
+            </div>
+            
+            <!-- Sort By Section -->
+            <div>
+                <div class="flex justify-between items-center mb-3 cursor-pointer" on:click={() => isSortExpanded = !isSortExpanded}>
+                    <h2 class="font-bold text-gray-700 uppercase text-sm">SORT BY</h2>
+                    <span class="text-sm text-gray-500">
+                        {isSortExpanded ? '▼' : '▶'}
+                    </span>
+                </div>
+                {#if isSortExpanded}
+                    <ul class="space-y-2">
+                        {#each sortOptions as option}
+                            <li>
+                                <label 
+                                    class="w-full text-left py-1 px-2 rounded hover:bg-gray-200 transition-colors text-sm flex items-center"
+                                >
+                                    <input 
+                                        type="checkbox" 
+                                        checked={selectedSortOptions.has(option.id)} 
+                                        on:change={() => handleSortOptionToggle(option)}
+                                        class="mr-2"
+                                    />
+                                    {option.name}
+                                </label>
+                            </li>
+                        {/each}
+                    </ul>
+                {/if}
+                
+                <!-- Remove Filter Button for Desktop -->
+                <button 
+                    class="mt-4 w-full bg-[#789DBC] text-white py-2 rounded-md flex justify-center items-center"
+                    on:click={() => {
+                        window.dispatchEvent(new CustomEvent('removeFilters'));
+                    }}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Remove Filters
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content - Added left margin to accommodate fixed sidebar -->
+        <div class="flex-1 p-4 md:ml-56 pt-4">
+            <h1 class="text-2xl font-bold mb-6">Browse Products</h1>
+
+            {#if loading}
+                <div class="flex justify-center items-center h-64">
+                    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#21463E]"></div>
+                </div>
+            {:else if error}
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <strong class="font-bold">Error!</strong>
+                    <span class="block sm:inline"> {error}</span>
+                </div>
+            {:else if filteredProducts.length === 0}
+                <div class="text-center py-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No products found</h3>
+                    <p class="mt-1 text-sm text-gray-500">Try adjusting your search or filters.</p>
+                </div>
+            {:else}
+                <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6 lg:gap-8 w-full max-w-full">
+                    {#each filteredProducts as product}
+                        <div class="w-full">
+                            <ProductCard {product} onAddToCart={handleAddToCart} />
+                        </div>
+                    {/each}
+                </div>
+            {/if}
+        </div>
+    </div>
 </div>
+
+<style>
+    /* Define navbar height variable */
+    :root {
+        --navbar-height: 60px;
+    }
+    
+    /* Animation for filter dropdown */
+    @keyframes slide-down {
+        from {
+            transform: translateY(-100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .animate-slide-down {
+        animation: slide-down 0.3s ease-out forwards;
+    }
+</style>
