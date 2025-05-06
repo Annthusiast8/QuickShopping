@@ -1,8 +1,8 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
-    import { api } from "$lib/services/api";
-    import { auth } from "$lib/stores/auth";
-    import type { LoginResponse } from "$lib/services/api";
+    // import { api } from "$lib/services/api";
+    // import { auth } from "$lib/stores/auth";
+    // import type { LoginResponse } from "$lib/services/api";
   
     interface FormData {
       email: string;
@@ -22,32 +22,38 @@
       isLoading = true;
       error = "";
       try {
-        const response = await api.login(formData);
+        // Commented out authentication logic
+        // const response = await api.login(formData);
   
-        if (response.token) {
-          await auth.login(response.token, response.user);
-          success = response.message;
+        // if (response.token) {
+        //   await auth.login(response.token, response.user);
+        //   success = response.message;
   
-          // Use the direct role property instead of roles array
-          const userRole = response.user.role || 'customer';
+        //   // Use the direct role property instead of roles array
+        //   const userRole = response.user.role || 'customer';
           
-          switch (userRole) {
-            case "admin":
-              goto("/page-admin/users");
-              break;
-            case "seller":
-              goto("/page-seller/profile");
-              break;
-            case "customer":
-              goto("/page-customer/profile");
-              break;
-            default:
-              goto("/");
-              break;
-          }
-        } else {
-          error = response.message || "Login failed";
-        }
+        //   switch (userRole) {
+        //     case "admin":
+        //       goto("/page-admin/users");
+        //       break;
+        //     case "seller":
+        //       goto("/page-seller/profile");
+        //       break;
+        //     case "customer":
+        //       goto("/page-customer/profile");
+        //       break;
+        //     default:
+        //       goto("/");
+        //       break;
+        //   }
+        // } else {
+        //   error = response.message || "Login failed";
+        // }
+
+        // Temporary direct navigation for testing
+        success = "Login successful (authentication disabled)";
+        goto("/page-customer/profile");
+        
       } catch (err: any) {
         error = err.response?.data?.message || "An error occurred. Please try again.";
         console.error("Login error:", err);

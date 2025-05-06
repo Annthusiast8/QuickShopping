@@ -1,5 +1,7 @@
 <script lang="ts">
-     import Login from "./login/+page.svelte";
+    import Sidebar from '$lib/sidebar.svelte';
+    import Header from '$lib/header.svelte';
+    import Login from "./login/+page.svelte";
     import axios from "axios";
     import { onMount } from "svelte";
 
@@ -16,10 +18,3 @@
     })
 </script>
 
-<h1>
-    {#each data as item}
-        {item.name} <br>
-    {/each}
-</h1>
-
-<Login/>

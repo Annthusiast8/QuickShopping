@@ -6,6 +6,8 @@
   let errorMessage = "";
   let successMessage = "";
   let isLoading = false;
+  let showPassword = false;
+  let showRepeatPassword = false;
 
   interface CustomerData {
     name: string;
@@ -20,7 +22,7 @@
     email: "",
     password: "",
     password_confirmation: "",
-    role: "customer" // Set the role explicitly
+    role: "customer"
   };
 
   async function submitForm() {
@@ -35,7 +37,6 @@
     }
 
     try {
-      // Use the specialized register method
       const response = await api.register('customer', userData);
 
       if (response.message) {
@@ -63,8 +64,8 @@
   }
 </script>
 
-<div class="min-h-screen flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 relative">
+<div class="min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat p-0 sm:p-4" style="background-image: url('/Register.png');">
+  <div class="relative z-10 bg-[#FFF5E0]/95 w-full min-h-screen sm:min-h-fit sm:w-auto sm:max-w-md md:max-w-lg p-4 sm:p-8 md:p-10 rounded-none sm:rounded-2xl shadow-2xl flex flex-col justify-center text-center">
     {#if errorMessage}
       <div class="absolute -top-4 left-0 right-0 mx-4">
         <p class="bg-red-100 text-red-700 px-4 py-3 rounded-lg text-sm font-medium">
@@ -81,73 +82,108 @@
       </div>
     {/if}
 
-    <div class="text-center mb-8">
-      <h1 class="text-4xl font-bold text-[#21463E] mb-2">
-        Quick<span class="text-yellow-500">Buy</span>
-      </h1>
-      <p class="text-gray-600 text-sm">Shop in a Snap with us!</p>
-    </div>
+    <img src="/SLOGAN.png" alt="QuickShopping Slogan" class="mx-auto mb-6 max-w-[85%] h-auto object-contain" />
 
     <form on:submit|preventDefault={submitForm} class="space-y-4">
-      <div class="space-y-2">
-        <label for="name" class="text-sm font-medium text-gray-700">Username</label>
-        <div class="relative">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-2 text-left">
+          <label for="name" class="block text-sm font-medium text-gray-700">Username</label>
           <input
             id="name"
             type="text"
             required
             bind:value={userData.name}
-            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#21463E] focus:border-transparent transition-all outline-none text-gray-800"
-            placeholder="Enter your name"
+            class="w-full px-4 py-2 bg-[#FFF5E0]/80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800"
+            placeholder="sample"
           />
         </div>
-      </div>
 
-      <div class="space-y-2">
-        <label for="email" class="text-sm font-medium text-gray-700">Email</label>
-        <div class="relative">
+        <div class="space-y-2 text-left">
+          <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
           <input
             id="email"
             type="email"
             required
             bind:value={userData.email}
-            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#21463E] focus:border-transparent transition-all outline-none text-gray-800"
-            placeholder="Enter your email"
+            class="w-full px-4 py-2 bg-[#FFF5E0]/80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800"
+            placeholder="sample@gmail.com"
           />
         </div>
       </div>
 
-      <div class="space-y-2">
-        <label for="password" class="text-sm font-medium text-gray-700">Password</label>
+      <div class="space-y-2 text-left">
+        <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
         <div class="relative">
           <input
             id="password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             required
             bind:value={userData.password}
-            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#21463E] focus:border-transparent transition-all outline-none text-gray-800"
-            placeholder="Create a password"
+            class="w-full px-4 py-2 bg-[#FFF5E0]/80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 pr-10"
+            placeholder="password"
           />
+          <button
+            type="button"
+            class="absolute right-3 top-1/2 -translate-y-1/2"
+            on:click={() => showPassword = !showPassword}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+          >
+            {#if showPassword}
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" class="text-gray-500">
+                <path stroke="currentColor" stroke-width="2" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/>
+                <circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            {:else}
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" class="text-gray-500">
+                <path stroke="currentColor" stroke-width="2" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/>
+                <circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="2"/>
+                <path stroke="currentColor" stroke-width="2" d="M4 4l16 16"/>
+              </svg>
+            {/if}
+          </button>
         </div>
       </div>
 
-      <div class="space-y-2">
-        <label for="confirmPassword" class="text-sm font-medium text-gray-700">Confirm Password</label>
+      <div class="space-y-2 text-left">
+        <label for="password_confirmation" class="block text-sm font-medium text-gray-700">Repeat Password</label>
         <div class="relative">
           <input
-            id="confirmPassword"
-            type="password"
+            id="password_confirmation"
+            type={showRepeatPassword ? 'text' : 'password'}
             required
             bind:value={userData.password_confirmation}
-            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#21463E] focus:border-transparent transition-all outline-none text-gray-800"
-            placeholder="Confirm your password"
+            class="w-full px-4 py-2 bg-[#FFF5E0]/80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-800 pr-10"
+            placeholder="password"
           />
+          <button
+            type="button"
+            class="absolute right-3 top-1/2 -translate-y-1/2"
+            on:click={() => showRepeatPassword = !showRepeatPassword}
+            aria-label={showRepeatPassword ? 'Hide password' : 'Show password'}
+          >
+            {#if showRepeatPassword}
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" class="text-gray-500">
+                <path stroke="currentColor" stroke-width="2" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/>
+                <circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            {:else}
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" class="text-gray-500">
+                <path stroke="currentColor" stroke-width="2" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/>
+                <circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="2"/>
+                <path stroke="currentColor" stroke-width="2" d="M4 4l16 16"/>
+              </svg>
+            {/if}
+          </button>
         </div>
+      </div>
+
+      <div class="text-right">
+        <a href="/forgot-password" class="text-blue-600 hover:underline text-sm">Forgot Password?</a>
       </div>
 
       <button
         type="submit"
-        class="w-full bg-[#21463E] text-white py-3 rounded-lg font-medium hover:bg-[#2d5d52] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+        class="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
         disabled={isLoading}
       >
         {#if isLoading}
@@ -156,7 +192,7 @@
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
         {/if}
-        {isLoading ? 'Creating account...' : 'Create account'}
+        {isLoading ? 'Creating account...' : 'Register as a Customer!'}
       </button>
 
       <div class="relative my-6">
@@ -164,28 +200,17 @@
           <div class="w-full border-t border-gray-200"></div>
         </div>
         <div class="relative flex justify-center text-sm">
-          <span class="px-2 bg-white text-gray-500">Want to sell with us?</span>
+          <span class="px-2 bg-[#FFF5E0]/95 text-gray-500">Already have an account?</span>
         </div>
       </div>
 
-      <button
-        type="button"
-        on:click={() => goto("/register/seller")}
-        class="w-full bg-white text-[#21463E] border-2 border-[#21463E] py-3 rounded-lg font-medium hover:bg-[#21463E] hover:text-white transition-colors duration-200"
-      >
-        Register as seller
-      </button>
-
-      <p class="text-center text-sm text-gray-600 mt-4">
-        Already have an account?
-        <button
-          type="button"
-          on:click={() => goto("/login")}
-          class="text-[#21463E] font-medium hover:underline"
-        >
-          Sign in
-        </button>
-      </p>
+      <div class="space-y-2">
+        <a href="/login" class="block text-blue-600 hover:underline">Log In</a>
+        <p class="text-gray-600">
+          Looking to start a business?
+          <a href="/register/seller" class="text-blue-600 hover:underline">Become a Seller</a>
+        </p>
+      </div>
     </form>
   </div>
 </div>

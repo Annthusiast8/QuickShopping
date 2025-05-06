@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import '../app.css';
 	import { auth } from '$lib/stores/auth';
 	import { onMount } from 'svelte';
