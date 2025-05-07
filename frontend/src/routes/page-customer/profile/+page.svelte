@@ -2,14 +2,18 @@
     import CustomerSidebar from '$lib/components/CustomerSidebar.svelte';
     import Alerts from '$lib/components/Alerts.svelte';
     import { onMount } from 'svelte';
+    import { writable } from 'svelte/store';
     
-    // User profile data
+    // Create a store to track if edit mode is active
+    export const isEditMode = writable(false);
+    
+    // User profile data with mock data
     let profileData = {
         username: 'kape_meow',
-        name: '',
-        email: '',
-        phone: '',
-        shippingAddress: ''
+        name: 'Katherine Peterson',
+        email: 'kathy.peterson@example.com',
+        phone: '+1 (555) 123-4567',
+        shippingAddress: '123 Maple Street, Apt 4B\nBrooklyn, NY 11201\nUnited States'
     };
     
     let profileImage = '/briar-lol-game-4k-wallpaper-uhdpaper.com-899@1@l.jpg';
@@ -20,6 +24,8 @@
     function updateProfile() {
         // Handle profile update logic here
         alert('Profile updated successfully');
+        // Close edit mode after updating
+        $isEditMode = false;
     }
     
     function deleteProfile() {
@@ -64,12 +70,22 @@
             reader.readAsDataURL(input.files[0]);
         }
     }
+
+    // Check URL parameters for edit mode
+    onMount(() => {
+        // Check if we should start in edit mode
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('edit') === 'true') {
+            $isEditMode = true;
+        }
+    });
 </script>
 
 <CustomerSidebar />
 <div class="content">
     <h1>My Profile</h1>
     
+    {#if $isEditMode}
     <div class="profile-card">
         <div class="profile-header">
             <div class="profile-image-container">
@@ -146,9 +162,28 @@
                 <button class="delete-btn" on:click={deleteProfile}>
                     Delete Profile
                 </button>
+                <button class="cancel-btn" on:click={() => $isEditMode = false}>
+                    Cancel
+                </button>
             </div>
         </div>
     </div>
+    {:else}
+    <div class="profile-view">
+        <div class="profile-header">
+            <div class="profile-image-container">
+                <img src={profileImage} alt="Profile" class="profile-image" />
+            </div>
+            <div class="profile-details">
+                <h2>{profileData.username}</h2>
+                {#if profileData.name}<p><strong>Name:</strong> {profileData.name}</p>{/if}
+                {#if profileData.email}<p><strong>Email:</strong> {profileData.email}</p>{/if}
+                {#if profileData.phone}<p><strong>Phone:</strong> {profileData.phone}</p>{/if}
+                {#if profileData.shippingAddress}<p><strong>Shipping Address:</strong> {profileData.shippingAddress}</p>{/if}
+            </div>
+        </div>
+    </div>
+    {/if}
 </div>
 
 <Alerts 
@@ -164,7 +199,6 @@
         margin-left: 220px;
         padding: 2rem;
         min-height: calc(100vh - 60px);
-       
     }
 
     h1 {
@@ -274,7 +308,7 @@
         margin-top: 1rem;
     }
     
-    .update-btn, .delete-btn {
+    .update-btn, .delete-btn, .cancel-btn, .edit-btn {
         padding: 0.75rem 1.5rem;
         border-radius: 4px;
         font-weight: 500;
@@ -301,6 +335,55 @@
         background: #d45c5c;
     }
     
+    .cancel-btn {
+        background: #f0f0f0;
+        color: #555;
+    }
+    
+    .cancel-btn:hover {
+        background: #e0e0e0;
+    }
+    
+    .edit-btn {
+        background: #5d93c5;
+        color: white;
+        margin-top: 1rem;
+    }
+    
+    .edit-btn:hover {
+        background: #4a7dab;
+    }
+    
+    .profile-view {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        padding: 2rem;
+        max-width: 900px;
+    }
+    
+    .profile-view .profile-header {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+    }
+    
+    .profile-details {
+        margin-left: 2rem;
+    }
+    
+    .profile-details h2 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: #2b4b66;
+    }
+    
+    .profile-details p {
+        margin: 0.5rem 0;
+        font-size: 0.95rem;
+        color: #555;
+    }
+    
     @media (max-width: 768px) {
         .content {
             margin-left: 0;
@@ -317,9 +400,20 @@
             width: 100%;
         }
         
-        .update-btn, .delete-btn {
+        .update-btn, .delete-btn, .cancel-btn, .edit-btn {
             width: 100%;
+        }
+        
+        .profile-view .profile-header {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .profile-details {
+            margin-left: 0;
+            margin-top: 1rem;
         }
     }
 </style>
   
+

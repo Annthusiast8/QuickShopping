@@ -1,5 +1,6 @@
 <script lang="ts">
     import CustomerSidebar from '$lib/components/CustomerSidebar.svelte';
+    import Alerts from '$lib/components/Alerts.svelte';
     
     let activeTab = 'All';
     const tabs = ['All', 'Pending', 'To Ship', 'To Receive', 'Completed'];
@@ -56,7 +57,12 @@
             total_price: 45.99,
             status: 'completed',
             date: '2023-10-28',
-            seller: 'AudioTech Store'
+            seller: 'AudioTech Store',
+            review: {
+                rating: 4,
+                text: 'Great sound quality and battery life. The only downside is it\'s a bit heavier than expected.',
+                date: '2023-11-01'
+            }
         },
         {
             id: '1005',
@@ -91,6 +97,62 @@
             const scrollAmount = 150;
             tabsContainer.scrollLeft += direction === 'left' ? -scrollAmount : scrollAmount;
         }
+    }
+
+    // Review Modal
+    let showReviewModal = false;
+    let selectedProduct: {name: string; image: string; variation: string} | null = null;
+    let rating = 5;
+    let reviewText = '';
+    
+    // Order Details Modal
+    let showOrderDetailsModal = false;
+    let selectedOrder: any = null;
+    
+    // Alert state
+    let showAlert = false;
+    
+    function openReviewModal(order: any) {
+        selectedProduct = {
+            name: order.item.name,
+            image: order.item.image,
+            variation: 'Black' // Default variation for mock data
+        };
+        rating = 5; // Default to 5 stars
+        reviewText = '';
+        showReviewModal = true;
+    }
+
+    function closeReviewModal() {
+        showReviewModal = false;
+    }
+    
+    function openOrderDetailsModal(order: any) {
+        selectedOrder = order;
+        showOrderDetailsModal = true;
+    }
+    
+    function closeOrderDetailsModal() {
+        showOrderDetailsModal = false;
+    }
+
+    function submitReview() {
+        // Here you would implement the logic to submit the review to your backend
+        console.log('Submitting review:', {
+            product: selectedProduct,
+            rating,
+            reviewText
+        });
+        
+        // Close the modal after submission
+        closeReviewModal();
+        
+        // Show the alert instead of using alert()
+        showAlert = true;
+    }
+    
+    function closeAlert() {
+        showAlert = false;
     }
 </script>
 
@@ -156,9 +218,28 @@
                         </div>
                         
                         <div class="order-actions">
-                            <button class="btn-action">View Details</button>
+                            <button class="btn-action" on:click={() => openOrderDetailsModal(order)}>View Details</button>
                             {#if order.status === 'completed'}
-                                <button class="btn-action">Write Review</button>
+                                {#if order.review}
+                                    <div class="review-box">
+                                        <div class="review-header">
+                                            <div class="star-display">
+                                                {#each Array(5) as _, i}
+                                                    <span class="star {i < order.review.rating ? 'filled' : ''}">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
+                                                            <path fill="none" d="M0 0h24v24H0z"/>
+                                                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
+                                                        </svg>
+                                                    </span>
+                                                {/each}
+                                            </div>
+                                            <span class="review-date">Reviewed on {order.review.date}</span>
+                                        </div>
+                                        <p class="review-text">{order.review.text}</p>
+                                    </div>
+                                {:else}
+                                    <button class="btn-action" on:click={() => openReviewModal(order)}>Write Review</button>
+                                {/if}
                             {/if}
                             {#if order.status === 'to_receive'}
                                 <button class="btn-action primary">Confirm Receipt</button>
@@ -182,6 +263,166 @@
         </div>
     </div>
 </div>
+
+<!-- Review Modal -->
+{#if showReviewModal && selectedProduct}
+<div class="modal-overlay">
+    <div class="modal-container">
+        <div class="modal-content">
+            <h2>Rate Product</h2>
+            
+            <div class="product-info">
+                <img src={selectedProduct.image} alt={selectedProduct.name} class="product-image" />
+                <div class="product-details">
+                    <h3>{selectedProduct.name}</h3>
+                    <p>Variation: {selectedProduct.variation}</p>
+                </div>
+            </div>
+            
+            <div class="rating-section">
+                <p>Product Quality</p>
+                <div class="star-rating">
+                    {#each Array(5) as _, i}
+                        <button 
+                            class="star-btn {i < rating ? 'active' : ''}" 
+                            on:click={() => rating = i + 1}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                                <path fill="none" d="M0 0h24v24H0z"/>
+                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
+                            </svg>
+                        </button>
+                    {/each}
+                    <span class="rating-text">
+                        {#if rating === 1}Poor
+                        {:else if rating === 2}Fair
+                        {:else if rating === 3}Good
+                        {:else if rating === 4}Very Good
+                        {:else}Amazing
+                        {/if}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="review-input">
+                <textarea 
+                    bind:value={reviewText} 
+                    placeholder="Share your thoughts on the product to help other buyers."
+                    rows="6"
+                ></textarea>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="btn-cancel" on:click={closeReviewModal}>Cancel</button>
+                <button class="btn-submit" on:click={submitReview}>Submit</button>
+            </div>
+        </div>
+    </div>
+</div>
+{/if}
+
+<!-- Order Details Modal -->
+{#if showOrderDetailsModal && selectedOrder}
+<div class="modal-overlay">
+    <div class="modal-container order-details-modal">
+        <div class="modal-content">
+            <button class="close-modal-btn" on:click={closeOrderDetailsModal}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="none" d="M0 0h24v24H0z"/>
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+                </svg>
+            </button>
+            <h2>Order Details</h2>
+            
+            <div class="order-details-section">
+                <div class="order-details-header">
+                    <div>
+                        <h3>Order #{selectedOrder.id}</h3>
+                        <p class="order-date-detail">Placed on {selectedOrder.date}</p>
+                    </div>
+                    <span class="status-badge detail-badge {selectedOrder.status}">
+                        {selectedOrder.status.replace('_', ' ').toUpperCase()}
+                    </span>
+                </div>
+                
+                <div class="order-details-content">
+                    <div class="detail-card">
+                        <h4>Product Information</h4>
+                        <div class="product-info-detail">
+                            <img src={selectedOrder.item.image} alt={selectedOrder.item.name} class="product-image-detail" />
+                            <div>
+                                <h5>{selectedOrder.item.name}</h5>
+                                <p>Seller: {selectedOrder.seller}</p>
+                                <p>Price: ${selectedOrder.item.price.toFixed(2)}</p>
+                                <p>Quantity: {selectedOrder.quantity}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-card">
+                        <h4>Payment Information</h4>
+                        <div class="detail-info">
+                            <div class="detail-row">
+                                <span>Subtotal:</span>
+                                <span>${(selectedOrder.item.price * selectedOrder.quantity).toFixed(2)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>Shipping Fee:</span>
+                                <span>$5.00</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>Discount:</span>
+                                <span>-$5.00</span>
+                            </div>
+                            <div class="detail-row total">
+                                <span>Total:</span>
+                                <span>${selectedOrder.total_price.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {#if selectedOrder.status === 'completed' && selectedOrder.review}
+                    <div class="detail-card">
+                        <h4>Your Review</h4>
+                        <div class="review-box detail-review">
+                            <div class="review-header">
+                                <div class="star-display">
+                                    {#each Array(5) as _, i}
+                                        <span class="star {i < selectedOrder.review.rating ? 'filled' : ''}">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
+                                                <path fill="none" d="M0 0h24v24H0z"/>
+                                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
+                                            </svg>
+                                        </span>
+                                    {/each}
+                                </div>
+                                <span class="review-date">Reviewed on {selectedOrder.review.date}</span>
+                            </div>
+                            <p class="review-text">{selectedOrder.review.text}</p>
+                        </div>
+                    </div>
+                    {/if}
+                </div>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="btn-cancel" on:click={closeOrderDetailsModal}>Close</button>
+                {#if selectedOrder.status === 'to_receive'}
+                    <button class="btn-submit">Confirm Receipt</button>
+                {/if}
+            </div>
+        </div>
+    </div>
+</div>
+{/if}
+
+<!-- Success Alert -->
+<Alerts 
+    isVisible={showAlert}
+    type="review-success"
+    title="Review Submitted"
+    on:close={closeAlert}
+/>
 
 <style>
     .content {
@@ -464,6 +705,290 @@
         background-color: #1e3a52;
     }
 
+    /* Review Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+    
+    .modal-container {
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .modal-content {
+        padding: 1.5rem;
+    }
+    
+    .modal-content h2 {
+        color: #333;
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+    
+    .product-info {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .product-image {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 4px;
+        margin-right: 1rem;
+    }
+    
+    .product-details h3 {
+        margin: 0 0 0.25rem;
+        font-size: 1.1rem;
+    }
+    
+    .product-details p {
+        color: #777;
+        margin: 0;
+    }
+    
+    .rating-section {
+        margin-bottom: 1.5rem;
+    }
+    
+    .rating-section p {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+    
+    .star-rating {
+        display: flex;
+        align-items: center;
+    }
+    
+    .star-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        color: #ddd;
+        transition: color 0.2s;
+        margin-right: 0.25rem;
+    }
+    
+    .star-btn.active {
+        color: #ffb400;
+    }
+    
+    .rating-text {
+        margin-left: 0.75rem;
+        font-weight: 500;
+        color: #ffb400;
+    }
+    
+    .review-input {
+        margin-bottom: 1.5rem;
+    }
+    
+    .review-input textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        resize: vertical;
+        font-family: inherit;
+        font-size: 0.95rem;
+    }
+    
+    .modal-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+    
+    .btn-cancel {
+        padding: 0.6rem 1.2rem;
+        background-color: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+        color: #555;
+    }
+    
+    .btn-submit {
+        padding: 0.6rem 1.2rem;
+        background-color: #789DBC;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    
+    .btn-submit:hover {
+        background-color: #1e3a52;
+    }
+
+    .review-box {
+        background-color: #f9f9f9;
+        border: 1px solid #eee;
+        border-radius: 6px;
+        padding: 0.75rem;
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .review-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .star-display {
+        display: flex;
+    }
+
+    .star {
+        color: #ddd;
+        margin-right: 2px;
+    }
+
+    .star.filled {
+        color: #ffb400;
+    }
+
+    .review-date {
+        font-size: 0.8rem;
+        color: #777;
+    }
+
+    .review-text {
+        margin: 0;
+        color: #555;
+        line-height: 1.4;
+    }
+
+    /* Order Details Modal Styles */
+    .order-details-modal {
+        max-width: 600px;
+    }
+    
+    .close-modal-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #777;
+        padding: 4px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .close-modal-btn:hover {
+        background-color: #f5f5f5;
+        color: #333;
+    }
+    
+    .order-details-section {
+        margin-bottom: 1.5rem;
+    }
+    
+    .order-details-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1.5rem;
+    }
+    
+    .order-date-detail {
+        color: #777;
+        font-size: 0.9rem;
+        margin: 0.25rem 0 0 0;
+    }
+    
+    .detail-badge {
+        margin: 0;
+    }
+    
+    .detail-card {
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .detail-card h4 {
+        margin-top: 0;
+        margin-bottom: 0.75rem;
+        color: #444;
+        font-size: 1rem;
+    }
+    
+    .product-info-detail {
+        display: flex;
+        align-items: center;
+    }
+    
+    .product-image-detail {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 4px;
+        margin-right: 1rem;
+    }
+    
+    .product-info-detail h5 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.1rem;
+    }
+    
+    .product-info-detail p {
+        margin: 0.25rem 0;
+        color: #555;
+    }
+    
+    .detail-info {
+        padding: 0 0.5rem;
+    }
+    
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .detail-row.total {
+        font-weight: 600;
+        font-size: 1.1rem;
+        border-bottom: none;
+        padding-top: 0.75rem;
+    }
+    
+    .detail-review {
+        margin: 0;
+    }
+    
     @media (max-width: 768px) {
         .content {
             margin-left: 0;
@@ -506,6 +1031,18 @@
         
         .order-actions {
             flex-wrap: wrap;
+        }
+        
+        .modal-container {
+            width: 95%;
+        }
+        
+        .order-details-header {
+            flex-direction: column;
+        }
+        
+        .status-badge.detail-badge {
+            margin-top: 0.5rem;
         }
     }
 </style>

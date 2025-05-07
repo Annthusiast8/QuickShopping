@@ -54,12 +54,20 @@
   >
     <nav class="w-full pt-4 flex flex-col gap-2 items-center">
       {#each navItems as item}
+        {@const isActive = $page.url.pathname === item.href}
         <a
           href={item.href}
-          class="flex items-center gap-3 w-[85%] px-4 py-3 rounded-md font-medium text-[0.95rem] text-gray-600 hover:bg-[#e6ecf2] hover:text-[#2b4b66] transition-all duration-200
-            { $page.url.pathname === item.href ? 'bg-[#e6ecf2] text-[#2b4b66] font-semibold' : '' }"
+          class="flex items-center gap-3 w-[85%] px-4 py-3 rounded-md font-medium text-[0.95rem] text-gray-600 hover:bg-[#789DBC] hover:text-[#ffffff] transition-all duration-200
+            { isActive ? 'bg-[#789DBC] text-[#ffffff] font-semibold' : '' }"
         >
-          <img class="w-5 h-5 object-contain opacity-70 group-hover:opacity-100" src={item.icon} alt={item.name} />
+          <div class="w-5 h-5 flex items-center justify-center">
+            <img 
+              class="w-5 h-5 object-contain transition-all duration-200" 
+              src={item.icon} 
+              alt={item.name}
+              style="filter: {isActive ? 'brightness(0) invert(1)' : 'brightness(0)'}"
+            />
+          </div>
           <span>{item.name}</span>
         </a>
       {/each}
