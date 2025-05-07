@@ -5,7 +5,7 @@
     export let isVisible: boolean = false;
     export let cartAdded: string = 'Item has been added to your Shopping Cart';
     export let autoDismiss: boolean = true;
-    export let type: 'success' | 'delete-account' | 'delete-countdown' = 'success';
+    export let type: 'success' | 'delete-account' | 'delete-countdown' | 'review-success' = 'success';
     export let title: string = '';
     
     const dispatch = createEventDispatcher();
@@ -32,8 +32,8 @@
     afterUpdate(() => {
         setupAutoDismiss();
         
-        // Start countdown when showing delete countdown
-        if (isVisible && type === 'delete-countdown' && countdown === 5) {
+        // Start countdown when showing delete countdown or review success
+        if (isVisible && (type === 'delete-countdown' || type === 'review-success') && countdown === 5) {
             startCountdown();
         }
     });
@@ -61,10 +61,17 @@
             
             if (countdown <= 0) {
                 clearInterval(countInterval);
-                // Proceed to login page after countdown completes
-                setTimeout(() => {
-                    goto('/login');
-                }, 500);
+                // Proceed to login page after countdown completes if it's delete-countdown
+                if (type === 'delete-countdown') {
+                    setTimeout(() => {
+                        goto('/login');
+                    }, 500);
+                } else {
+                    // Just close the modal for review-success
+                    dispatch('close');
+                }
+                // Reset countdown for next time
+                countdown = 5;
             }
         }, 1000);
         
@@ -94,6 +101,17 @@
                 
                 <p class="text-white mb-0">
                     {cartAdded}
+                </p>
+            </div>
+        {:else if type === 'review-success'}
+            <div class="bg-black bg-opacity-80 rounded-lg shadow-lg max-w-sm mx-auto text-center p-5 h-[200px] w-[400px] flex flex-col items-center justify-center">
+                <div class="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <span class="text-white text-4xl font-bold">{countdown}</span>
+                </div>
+                
+                <h2 class="text-white text-xl font-bold mb-1">{title}</h2>
+                <p class="text-white mb-0">
+                    Review has been submitted
                 </p>
             </div>
         {:else if type === 'delete-account'}

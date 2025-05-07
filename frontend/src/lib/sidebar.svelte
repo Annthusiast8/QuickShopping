@@ -14,11 +14,11 @@
 
   // Create Product sidebar menu items
   const createProductMenuItems = [
-    { name: 'Your Profile', icon: '/profile.png', href: '/page-customer/profile' },
-    { name: 'Your Products', icon: '/market.png', href: '/page-customer/products' },
-    { name: 'All Orders', icon: '/cart.png', href: '/page-customer/orders' },
-    { name: 'Your Coupons', icon: '/coupon.png', href: '/page-customer/coupons' },
-    { name: 'Category List', icon: '/categ.png', href: '/page-customer/categories' }
+    { name: 'Your Profile', icon: '/profile.png', href: '/page-seller/profile' },
+    { name: 'Your Products', icon: '/market.png', href: '/page-seller/products' },
+    { name: 'All Orders', icon: '/cart.png', href: '/page-seller/orders' },
+    { name: 'Your Coupons', icon: '/coupon.png', href: '/page-seller/coupons' },
+    { name: 'Category List', icon: '/categ.png', href: '/page-seller/categories' }
   ];
 
   // Reactive statement to detect if current route is in page-customer

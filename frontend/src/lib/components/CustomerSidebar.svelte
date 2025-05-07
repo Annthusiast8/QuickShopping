@@ -1,6 +1,11 @@
 <script lang="ts">
     import { page } from '$app/stores';
     import { onMount } from 'svelte';
+    import { writable } from 'svelte/store';
+    
+    // Create a local edit mode store
+    const editMode = writable(false);
+    
     let sidebarOpen = false;
     let isMobile = false;
     
@@ -23,6 +28,13 @@
       window.addEventListener('resize', handleResize);
       return () => window.removeEventListener('resize', handleResize);
     });
+
+    // Function to toggle edit mode and navigate to profile page
+    function toggleEditMode() {
+      $editMode = true;
+      // Navigate to profile page with edit=true query param
+      window.location.href = '/page-customer/profile?edit=true';
+    }
 </script>
 
 {#if isMobile}
@@ -37,7 +49,7 @@
     <div class="profile-section">
       <img class="avatar" src="/briar-lol-game-4k-wallpaper-uhdpaper.com-899@1@l.jpg" alt="User Avatar" />
       <div class="username">kape_meow</div>
-      <div class="edit-profile"><a href="/page-customer/profile">✎ Edit profile</a></div>
+      <div class="edit-profile"><button on:click={toggleEditMode}>✎ Edit profile</button></div>
     </div>
     <nav class="user-nav">
       {#each menuItems as item}
@@ -172,13 +184,18 @@
     margin-bottom: 0.5rem;
   }
 
-  .edit-profile a {
+  .edit-profile button {
+    background: none;
+    border: none;
     color: #888;
     text-decoration: none;
     transition: color 0.2s;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0;
   }
 
-  .edit-profile a:hover {
+  .edit-profile button:hover {
     color: #2b4b66;
   }
 
