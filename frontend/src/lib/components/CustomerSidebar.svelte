@@ -1,40 +1,28 @@
 <script lang="ts">
-  import { page } from '$app/stores';
-  import { onMount } from 'svelte';
-  let sidebarOpen = false;
-  let isMobile = false;
+    import { page } from '$app/stores';
+    import { onMount } from 'svelte';
+    let sidebarOpen = false;
+    let isMobile = false;
+    
+    // Sidebar menu items
+    const menuItems = [
+      { name: 'My Profile', icon: '/profile.png', href: '/page-customer/profile' },
+      { name: 'My Purchases', icon: '/cart.png', href: '/page-customer/profile/my-purchases' }
+    ];
   
-  // Admin/Business sidebar menu items
-  const adminMenuItems = [
-    { name: 'Dashboard', icon: '/Dashboard%20Layout.png', href: '/page-admin' },
-    { name: 'Manage Users', icon: '/Users.png', href: '/page-admin/users' },
-    { name: 'Business', icon: '/Business.png', href: '/page-admin/business' },
-    { name: 'Reported Items', icon: '/Group%20248.png', href: '/page-admin/reports' }
-  ];
-
-  // Create Product sidebar menu items
-  const createProductMenuItems = [
-    { name: 'Your Profile', icon: '/profile.png', href: '/page-customer/profile' },
-    { name: 'Your Products', icon: '/market.png', href: '/page-customer/products' },
-    { name: 'All Orders', icon: '/cart.png', href: '/page-customer/orders' },
-    { name: 'Your Coupons', icon: '/coupon.png', href: '/page-customer/coupons' },
-    { name: 'Category List', icon: '/categ.png', href: '/page-customer/categories' }
-  ];
-
-  // Reactive statement to detect if current route is in page-customer
-  $: isCustomerPage = $page.url.pathname.startsWith('/page-customer');
-  $: isAdminPage = $page.url.pathname.startsWith('/page-admin');
-
-  function handleResize() {
-    isMobile = window.innerWidth <= 768;
-    if (!isMobile) sidebarOpen = false;
-  }
-
-  onMount(() => {
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  });
+    // Reactive statement to detect if current route is in page-customer
+    $: isCustomerPage = $page.url.pathname.startsWith('/page-customer');
+  
+    function handleResize() {
+      isMobile = window.innerWidth <= 768;
+      if (!isMobile) sidebarOpen = false;
+    }
+  
+    onMount(() => {
+      handleResize();
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    });
 </script>
 
 {#if isMobile}
@@ -52,22 +40,8 @@
       <div class="edit-profile"><a href="/page-customer/profile">✎ Edit profile</a></div>
     </div>
     <nav class="user-nav">
-      {#each createProductMenuItems as item}
+      {#each menuItems as item}
         <a href={item.href} class="nav-item" class:active={$page.url.pathname === item.href}>
-          <img class="icon" src={item.icon} alt={item.name} />
-          <span>{item.name}</span>
-        </a>
-      {/each}
-    </nav>
-  {:else if isAdminPage}
-    <!-- Admin Page Layout -->
-    <nav>
-      {#each adminMenuItems as item}
-        <a 
-          href={item.href}
-          class="nav-item"
-          class:active={$page.url.pathname === item.href}
-        >
           <img class="icon" src={item.icon} alt={item.name} />
           <span>{item.name}</span>
         </a>
@@ -299,4 +273,4 @@
       display: none;
     }
   }
-</style>
+</style> 

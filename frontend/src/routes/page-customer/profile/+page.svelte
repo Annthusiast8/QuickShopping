@@ -1,111 +1,326 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { profileStore } from '$lib/stores/profile';
-  import ProfileInfo from './ProfileInfo.svelte';
-  import AddressManager from './AddressManager.svelte';
-  
-  // Reactive declarations using runes
-  const profile = $derived($profileStore.profile);
-  const loading = $derived($profileStore.loading);
-  const error = $derived($profileStore.error);
-  
-  // Tab management
-  const tabs = [
-    { id: 'personal', label: 'Personal Information' },
-    { id: 'addresses', label: 'Addresses' },
-    { id: 'security', label: 'Security' }
-  ];
-  
-  let activeTab = 'personal';
-  
-  function setActiveTab(tabId: string) {
-    activeTab = tabId;
-  }
-  
-  // Fetch profile on mount
-  onMount(() => {
-    profileStore.fetchProfile();
-  });
+    import CustomerSidebar from '$lib/components/CustomerSidebar.svelte';
+    import Alerts from '$lib/components/Alerts.svelte';
+    import { onMount } from 'svelte';
+    
+    // User profile data
+    let profileData = {
+        username: 'kape_meow',
+        name: '',
+        email: '',
+        phone: '',
+        shippingAddress: ''
+    };
+    
+    let profileImage = '/briar-lol-game-4k-wallpaper-uhdpaper.com-899@1@l.jpg';
+    let showDeleteModal = false;
+    let showCountdownModal = false;
+    let alertType: 'success' | 'delete-account' | 'delete-countdown' = 'delete-account';
+    
+    function updateProfile() {
+        // Handle profile update logic here
+        alert('Profile updated successfully');
+    }
+    
+    function deleteProfile() {
+        showDeleteModal = true;
+        alertType = 'delete-account';
+    }
+    
+    function handleConfirmDelete(event) {
+        // Get the password from the event detail
+        const password = event.detail.password;
+        
+        // Here you would validate the password and perform the deletion
+        console.log('Deleting account with password:', password);
+        
+        // First close the password confirmation modal
+        showDeleteModal = false;
+        
+        // Then show the countdown modal
+        setTimeout(() => {
+            alertType = 'delete-countdown';
+            showDeleteModal = true;
+            
+            // Here you would make an API call to delete the account
+            // For example:
+            // api.deleteAccount(password)
+            //    .then(() => console.log('Account deleted successfully'))
+            //    .catch(err => console.error('Error deleting account:', err));
+        }, 300);
+    }
+    
+    function closeDeleteModal() {
+        showDeleteModal = false;
+    }
+    
+    function handleImageChange(event: Event) {
+        const input = event.target as HTMLInputElement;
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                profileImage = e.target?.result as string;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
 </script>
 
-<div>
-  <div class="sm:flex sm:items-center sm:justify-between mb-8">
-    <div>
-      <h1 class="text-2xl font-bold text-gray-900">My Profile</h1>
-      <p class="mt-1 text-sm text-gray-500">Manage your account details and preferences</p>
-    </div>
-  </div>
+<CustomerSidebar />
 
-  {#if error}
-    <div class="rounded-md bg-red-50 p-4 mb-4">
-      <div class="flex">
-        <div class="flex-shrink-0">
-          <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
-          </svg>
+<div class="content">
+    <h1>My Profile</h1>
+    
+    <div class="profile-card">
+        <div class="profile-header">
+            <div class="profile-image-container">
+                <img src={profileImage} alt="Profile" class="profile-image" />
+                <label for="profile-image-upload" class="change-photo-btn">Change Photo</label>
+                <input 
+                    type="file" 
+                    id="profile-image-upload" 
+                    accept="image/*" 
+                    on:change={handleImageChange} 
+                    hidden
+                />
+            </div>
         </div>
-        <div class="ml-3">
-          <h3 class="text-sm font-medium text-red-800">Error</h3>
-          <div class="mt-2 text-sm text-red-700">
-            <p>{error}</p>
-          </div>
+        
+        <div class="profile-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        bind:value={profileData.username} 
+                        placeholder="Username"
+                    />
+                </div>
+                
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <input 
+                        type="text" 
+                        id="name" 
+                        bind:value={profileData.name} 
+                        placeholder="Full Name"
+                    />
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        bind:value={profileData.email} 
+                        placeholder="Email Address"
+                    />
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input 
+                        type="tel" 
+                        id="phone" 
+                        bind:value={profileData.phone} 
+                        placeholder="Phone Number"
+                    />
+                </div>
+            </div>
+            
+            <div class="form-group full-width">
+                <label for="shipping">Shipping Address</label>
+                <textarea 
+                    id="shipping" 
+                    bind:value={profileData.shippingAddress} 
+                    placeholder="Shipping Address"
+                ></textarea>
+            </div>
+            
+            <div class="profile-actions">
+                <button class="update-btn" on:click={updateProfile}>
+                    Update Profile
+                </button>
+                <button class="delete-btn" on:click={deleteProfile}>
+                    Delete Profile
+                </button>
+            </div>
         </div>
-        <div class="ml-auto pl-3">
-          <div class="-mx-1.5 -my-1.5">
-            <button 
-              type="button" 
-              on:click={() => profileStore.clearError()}
-              class="inline-flex rounded-md bg-red-50 p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 focus:ring-offset-red-50"
-            >
-              <span class="sr-only">Dismiss</span>
-              <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
-  {/if}
+</div>
 
-  {#if loading && !profile}
-    <div class="flex justify-center items-center h-64">
-      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#21463E]"></div>
-    </div>
-  {:else}
-    <!-- Tab navigation -->
-    <div class="border-b border-gray-200 mb-6">
-      <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-        {#each tabs as tab}
-          <button
-            on:click={() => setActiveTab(tab.id)}
-            class={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === tab.id
-                ? 'border-[#21463E] text-[#21463E]'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            {tab.label}
-          </button>
-        {/each}
-      </nav>
-    </div>
+<Alerts 
+    isVisible={showDeleteModal}
+    type={alertType}
+    autoDismiss={false}
+    on:close={closeDeleteModal}
+    on:confirm={handleConfirmDelete}
+/>
 
-    <!-- Tab content -->
-    <div class="bg-white shadow rounded-lg p-6">
-      {#if activeTab === 'personal'}
-        <ProfileInfo />
-      {:else if activeTab === 'addresses'}
-        <AddressManager />
-      {:else if activeTab === 'security'}
-        <div class="text-center py-12">
-          <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-          <h3 class="mt-2 text-sm font-medium text-gray-900">Security settings coming soon</h3>
-          <p class="mt-1 text-sm text-gray-500">This feature is currently under development.</p>
-        </div>
-      {/if}
-    </div>
-  {/if}
-</div> 
+<style>
+    .content {
+        margin-left: 220px;
+        padding: 2rem;
+        min-height: calc(100vh - 60px);
+       
+    }
+
+    h1 {
+        color: #2b4b66;
+        margin-bottom: 2rem;
+        font-family: 'Poppins', sans-serif;
+        font-size: 40px;
+        font-weight: bold;
+    }
+    
+    .profile-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        padding: 2rem;
+        max-width: 900px;
+    }
+    
+    .profile-header {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 2rem;
+    }
+    
+    .profile-image-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .profile-image {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #f0f0f0;
+    }
+    
+    .change-photo-btn {
+        background: #f8f8f8;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .change-photo-btn:hover {
+        background: #eee;
+    }
+    
+    .profile-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    
+    .form-row {
+        display: flex;
+        gap: 1.5rem;
+        width: 100%;
+    }
+    
+    .form-group {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .full-width {
+        width: 100%;
+    }
+    
+    label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #555;
+    }
+    
+    input, textarea {
+        padding: 0.75rem;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        background-color: #fffdf6;
+        font-size: 0.95rem;
+        width: 100%;
+        transition: border-color 0.2s;
+    }
+    
+    textarea {
+        min-height: 100px;
+        resize: vertical;
+    }
+    
+    input:focus, textarea:focus {
+        outline: none;
+        border-color: #2b4b66;
+    }
+    
+    .profile-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .update-btn, .delete-btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+    }
+    
+    .update-btn {
+        background: #5d93c5;
+        color: white;
+    }
+    
+    .update-btn:hover {
+        background: #4a7dab;
+    }
+    
+    .delete-btn {
+        background: #e77979;
+        color: white;
+    }
+    
+    .delete-btn:hover {
+        background: #d45c5c;
+    }
+    
+    @media (max-width: 768px) {
+        .content {
+            margin-left: 0;
+            padding: 1rem;
+        }
+        
+        .form-row {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .profile-actions {
+            flex-direction: column;
+            width: 100%;
+        }
+        
+        .update-btn, .delete-btn {
+            width: 100%;
+        }
+    }
+</style>
+  
