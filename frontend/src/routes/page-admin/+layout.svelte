@@ -26,8 +26,8 @@
   const navItems = [
     { name: 'Dashboard', icon: '/Dashboard%20Layout.png', href: '/page-admin/dashboard' },
     { name: 'Users', icon: '/Users.png', href: '/page-admin/users' },
-    { name: 'Business', icon: '/Business.png', href: '/page-admin/products' },
-    { name: 'Orders', icon: '/cart.png', href: '/page-admin/orders' },
+    { name: 'Business', icon: '/Business.png', href: '/page-admin/orders' },
+    { name: 'Reported Items', icon: '/cart.png', href: '/page-admin/products' },
   ];
 
   // You can keep your stats logic here

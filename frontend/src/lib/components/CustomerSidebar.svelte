@@ -79,7 +79,7 @@
     box-shadow: 2px 0 8px rgba(0,0,0,0.04);
     overflow: hidden;
     transition: left 0.3s, box-shadow 0.3s;
-    z-index: 1000;
+    z-index: 0;
   }
 
   nav {
@@ -236,8 +236,8 @@
 
   .sidebar.mobile {
     left: -220px;
-    top: 0;
-    min-height: 100vh;
+    top: 62px;
+    min-height: 95vh;
     box-shadow: none;
     position: fixed;
     width: 200px;
