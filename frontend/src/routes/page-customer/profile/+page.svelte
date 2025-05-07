@@ -67,7 +67,6 @@
 </script>
 
 <CustomerSidebar />
-
 <div class="content">
     <h1>My Profile</h1>
     

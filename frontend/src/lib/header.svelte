@@ -1,7 +1,7 @@
 <header>
     <div class="header-container">
-      <a href="/Profile" class="logo">QuickShopping</a>
-      <a href="/Profile" class="profile-link">
+      <a href="./profile" class="logo">QuickShopping</a>
+      <a href="/page-customer/profile" class="profile-link">
         <div class="profile-section">
           <img src="/briar-lol-game-4k-wallpaper-uhdpaper.com-899@1@l.jpg" alt="Profile" class="profile-image">
         </div>

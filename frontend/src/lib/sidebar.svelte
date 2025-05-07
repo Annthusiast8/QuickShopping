@@ -93,7 +93,7 @@
     box-shadow: 2px 0 8px rgba(0,0,0,0.04);
     overflow: hidden;
     transition: left 0.3s, box-shadow 0.3s;
-    z-index: 1000;
+    z-index: 0;
   }
 
   nav {
@@ -262,7 +262,7 @@
     position: fixed;
     top: 16px;
     left: 16px;
-    z-index: 1100;
+    z-index: 0;
     background: #fff;
     border: none;
     border-radius: 50%;
