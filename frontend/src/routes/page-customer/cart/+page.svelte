@@ -2,10 +2,11 @@
   import { cartStore, type CartItem } from '$lib/stores/cart';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import CheckoutSuccessModal from '$lib/components/CheckoutSuccessModal.svelte';
+  import Alerts from '$lib/components/Alerts.svelte';
 
-  // State for checkout success modal
-  let showCheckoutSuccessModal = false;
+  // State for delete confirmation modal
+  let showDeleteConfirmModal = false;
+  let itemToDelete: CartItem | null = null;
   
   // State for mobile accordions
   let expandedItems: Record<string, boolean> = {};
@@ -22,13 +23,22 @@
   }
 
   // Group items by seller
-  $: itemsBySeller = groupItemsBySeller($cartStore.items);
+  // Search functionality
+  let searchQuery = '';
+  $: visibleItems = searchQuery.trim() 
+    ? $cartStore.items.filter(item => 
+        item.product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.product.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : $cartStore.items;
+  
+  $: itemsBySeller = groupItemsBySeller(visibleItems);
   $: anyItemSelected = $cartStore.items.some(item => item.selected);
   $: allItemsSelected = $cartStore.items.length > 0 && 
     $cartStore.items.every(item => item.selected);
   $: selectedItems = $cartStore.items.filter(item => item.selected);
   $: totalSelectedPrice = calculateTotalSelectedPrice(selectedItems);
-
+  
   // Format price to currency
   function formatPrice(price: number): string {
     return new Intl.NumberFormat('en-US', {
@@ -104,13 +114,23 @@
     }
   }
 
-  // Handle item removal
-  function removeItem(item: CartItem) {
-    cartStore.removeItem(
-      item.product.id, 
-      item.variation.color, 
-      item.variation.size
-    );
+  // Handle item removal with confirmation
+  function confirmRemoveItem(item: CartItem) {
+    itemToDelete = item;
+    showDeleteConfirmModal = true;
+  }
+  
+  // Actually remove the item after confirmation
+  function handleConfirmDelete() {
+    if (itemToDelete) {
+      cartStore.removeItem(
+        itemToDelete.product.id, 
+        itemToDelete.variation.color, 
+        itemToDelete.variation.size
+      );
+    }
+    showDeleteConfirmModal = false;
+    itemToDelete = null;
   }
 
   // Handle item selection toggle
@@ -130,16 +150,6 @@
   // Handle all items selection toggle
   function toggleAllSelection() {
     cartStore.toggleAllSelection(!allItemsSelected);
-  }
-
-  // Handle checkout
-  function proceedToCheckout() {
-    // Show the success modal instead of alert
-    showCheckoutSuccessModal = true;
-    
-    // Clear the selected items from the cart
-    // We'll keep this commented until we actually implement the checkout API
-    // selectedItems.forEach(item => removeItem(item));
   }
 
   // Handle continue shopping
@@ -191,6 +201,15 @@
         selected: true
       });
     }
+    
+    // Listen for search events from the layout
+    window.addEventListener('searchCart', ((event: CustomEvent) => {
+      searchQuery = event.detail.query;
+    }) as EventListener);
+    
+    return () => {
+      window.removeEventListener('searchCart', ((event: CustomEvent) => {}) as EventListener);
+    };
   });
 </script>
 
@@ -311,7 +330,7 @@
             <div class="col-span-2 flex justify-center">
               <button 
                 class="text-red-500 hover:text-red-700"
-                on:click={() => removeItem(item)}
+                on:click={() => confirmRemoveItem(item)}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -359,7 +378,7 @@
                     <span class="font-semibold text-[#21463E]">{formatPrice(item.product.price)}</span>
                     <button 
                       class="text-red-500 hover:text-red-700"
-                      on:click={() => removeItem(item)}
+                      on:click={() => confirmRemoveItem(item)}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -461,7 +480,7 @@
           </div>
           <button 
             class="w-full md:w-auto px-6 py-2 bg-[#21463E] text-white rounded-md hover:bg-[#143129] disabled:opacity-50 disabled:cursor-not-allowed"
-            on:click={proceedToCheckout}
+            on:click={() => goto('/page-customer/checkout')}
             disabled={!anyItemSelected}
           >
             Checkout
@@ -477,11 +496,10 @@
   {/if}
 </div>
 
-<!-- Checkout Success Modal -->
-<CheckoutSuccessModal 
-  isOpen={showCheckoutSuccessModal} 
-  total={totalSelectedPrice}
-  on:close={() => showCheckoutSuccessModal = false}
-  on:continueShopping={handleContinueShopping}
-  on:viewOrders={handleViewOrders}
+<!-- Delete Confirmation Modal -->
+<Alerts 
+  isVisible={showDeleteConfirmModal}
+  type="delete-item"
+  on:close={() => showDeleteConfirmModal = false}
+  on:confirmDeleteItem={handleConfirmDelete}
 />

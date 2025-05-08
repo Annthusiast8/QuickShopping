@@ -2,6 +2,7 @@
     import { page } from '$app/stores';
     import { onMount } from 'svelte';
     import { writable } from 'svelte/store';
+    import { goto } from '$app/navigation';
     
     // Create a local edit mode store
     const editMode = writable(false);
@@ -12,7 +13,12 @@
     // Sidebar menu items
     const menuItems = [
       { name: 'My Profile', icon: '/profile.png', href: '/page-customer/profile' },
-      { name: 'My Purchases', icon: '/cart.png', href: '/page-customer/profile/my-purchases' }
+      { 
+        name: 'My Purchases', 
+        icon: 'svg',
+        href: '/page-customer/profile/my-purchases',
+        svg: '<svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 4h3a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3m0 3h6m-5-4v4h4V3h-4Z"/></svg>'
+      }
     ];
   
     // Reactive statement to detect if current route is in page-customer
@@ -35,6 +41,18 @@
       // Navigate to profile page with edit=true query param
       window.location.href = '/page-customer/profile?edit=true';
     }
+
+    // Logout function to handle user logout
+    function handleLogout() {
+      // Clear any stored user data or tokens (localStorage, cookies, etc)
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+      
+      // Use goto for navigation within the SPA
+      goto('/login');
+    }
 </script>
 
 {#if isMobile}
@@ -54,13 +72,17 @@
     <nav class="user-nav">
       {#each menuItems as item}
         <a href={item.href} class="nav-item" class:active={$page.url.pathname === item.href}>
-          <img class="icon" src={item.icon} alt={item.name} />
+          {#if item.icon === 'svg'}
+            {@html item.svg}
+          {:else}
+            <img class="icon" src={item.icon} alt={item.name} />
+          {/if}
           <span>{item.name}</span>
         </a>
       {/each}
     </nav>
   {/if}
-  <button class="logout">Logout</button>
+  <button class="logout" on:click={handleLogout}>Logout</button>
 </div>
 
 <style>

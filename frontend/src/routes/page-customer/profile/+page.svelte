@@ -19,11 +19,15 @@
     let profileImage = '/briar-lol-game-4k-wallpaper-uhdpaper.com-899@1@l.jpg';
     let showDeleteModal = false;
     let showCountdownModal = false;
-    let alertType: 'success' | 'delete-account' | 'delete-countdown' = 'delete-account';
+    let alertType: 'success' | 'delete-account' | 'delete-countdown' | 'review-success' | 'error' | 'profile-update' = 'delete-account';
+    let showUpdateAlert = false;
     
     function updateProfile() {
         // Handle profile update logic here
-        alert('Profile updated successfully');
+        // Display the update alert instead of the JavaScript alert
+        alertType = 'profile-update';
+        showUpdateAlert = true;
+        
         // Close edit mode after updating
         $isEditMode = false;
     }
@@ -33,7 +37,7 @@
         alertType = 'delete-account';
     }
     
-    function handleConfirmDelete(event) {
+    function handleConfirmDelete(event: { detail: { password: string } }) {
         // Get the password from the event detail
         const password = event.detail.password;
         
@@ -58,6 +62,10 @@
     
     function closeDeleteModal() {
         showDeleteModal = false;
+    }
+    
+    function closeUpdateAlert() {
+        showUpdateAlert = false;
     }
     
     function handleImageChange(event: Event) {
@@ -192,6 +200,14 @@
     autoDismiss={false}
     on:close={closeDeleteModal}
     on:confirm={handleConfirmDelete}
+/>
+
+<Alerts 
+    isVisible={showUpdateAlert}
+    type="profile-update"
+    autoDismiss={true}
+    cartAdded="Profile has been updated"
+    on:close={closeUpdateAlert}
 />
 
 <style>

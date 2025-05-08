@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import type { Product } from '$lib/stores/products';
-  import { mockReviews } from '$lib/mock/data';
+  import { reviewStore } from '$lib/stores/reviews';
   import AddToCartModal from './AddToCartModal.svelte';
   import AddToCartSuccess from './Alerts.svelte';
-  import { onMount } from 'svelte';
+  import ReportProductModal from './ReportProductModal.svelte';
 
   export let product: Product;
   export let isOpen: boolean = false;
@@ -14,6 +14,11 @@
   let activeTab: 'description' | 'reviews' = 'description';
   let showAddToCartModal: boolean = false;
   let showSuccessOverlay: boolean = false;
+  let showReportModal: boolean = false;
+  let buyNowMode: boolean = false;
+  
+  // Get product reviews
+  $: productReviews = $reviewStore.reviews.filter(review => review.product_id === product.id);
 
   // Mock business profiles
   const mockBusinessProfiles: Record<string, { business_name: string; logo_url: null }> = {
@@ -47,7 +52,12 @@
   }
 
   function reportProduct() {
-    dispatch('report', product);
+    showReportModal = true;
+  }
+
+  function handleReportSubmit(event: CustomEvent) {
+    dispatch('report', event.detail);
+    // Additional reporting logic can be added here
   }
 
   function formatPrice(price: number): string {
@@ -86,7 +96,12 @@
     dispatch('addToCart', event.detail);
     
     // Show success overlay
-    showSuccessOverlay = true;
+    showSuccessOverlay = false;
+    showAddToCartModal = false;
+  }
+
+  function handleBuyNow(event: CustomEvent) {
+    dispatch('buy', event.detail);
     showAddToCartModal = false;
   }
 
@@ -169,13 +184,19 @@
           
           <div class="flex gap-2 mb-6">
             <button
-              on:click={() => showAddToCartModal = true}
+              on:click={() => {
+                showAddToCartModal = true;
+                buyNowMode = false;
+              }}
               class="flex-1 px-6 py-3 bg-[#21463E] text-white rounded-md hover:bg-[#143129] transition-colors duration-200 font-semibold"
             >
               Add to Cart
             </button>
             <button
-              on:click={() => dispatch('buy', product)}
+              on:click={() => {
+                showAddToCartModal = true;
+                buyNowMode = true;
+              }}
               class="flex-1 px-6 py-3 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors duration-200 font-semibold"
             >
               Buy
@@ -217,8 +238,8 @@
               </div>
             {:else}
               <div class="space-y-6">
-                {#if (product.review_count || 0) > 0}
-                  {#each mockReviews as review}
+                {#if productReviews.length > 0}
+                  {#each productReviews as review}
                     <div class="border-b border-gray-200 pb-6">
                       <div class="flex items-start space-x-4">
                         <img 
@@ -268,11 +289,21 @@
 <AddToCartModal 
   {product}
   isOpen={showAddToCartModal}
+  buyNow={buyNowMode}
   on:close={() => showAddToCartModal = false}
   on:addToCart={handleAddToCart}
+  on:buyNow={handleBuyNow}
 />
 
 <AddToCartSuccess
   isVisible={showSuccessOverlay}
   on:close={closeSuccessOverlay}
+  cartAdded="Item Added to Cart"
+/>
+
+<ReportProductModal 
+  {product}
+  isOpen={showReportModal}
+  on:close={() => showReportModal = false}
+  on:report={handleReportSubmit}
 /> 

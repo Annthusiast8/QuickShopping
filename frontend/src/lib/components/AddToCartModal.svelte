@@ -4,6 +4,7 @@
     
     export let product: Product;
     export let isOpen: boolean = false;
+    export let buyNow: boolean = false;
     
     const dispatch = createEventDispatcher();
     
@@ -44,14 +45,20 @@
             return;
         }
         
-        dispatch('addToCart', { 
+        const detail = { 
             product, 
             quantity,
             variation: {
                 color: selectedColor,
                 size: selectedSize
             }
-        });
+        };
+        
+        if (buyNow) {
+            dispatch('buyNow', detail);
+        } else {
+            dispatch('addToCart', detail);
+        }
         
         // Show success toast
         showToast = true;
@@ -104,7 +111,7 @@
                 </svg>
             </button>
             
-            <h2 class="text-xl font-bold mb-4">Add to Cart</h2>
+            <h2 class="text-xl font-bold mb-4">{buyNow ? 'Place Order' : 'Add to Cart'}</h2>
             
             <div class="flex mb-6">
                 <div class="w-1/3 mr-4">
@@ -212,12 +219,12 @@
                     Cancel
                 </button>
                 <button 
-                    class="px-4 py-2 {(!selectedColor || (hasSizeVariations && !selectedSize)) ? 'bg-gray-400 cursor-not-allowed' : 'bg-yellow-500 hover:bg-green-500'} text-white rounded-md transition-colors duration-200"
+                    class="px-4 py-2 {(!selectedColor || (hasSizeVariations && !selectedSize)) ? 'bg-gray-400 cursor-not-allowed' : buyNow ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-[#21463E] hover:bg-[#143129]'} text-white rounded-md transition-colors duration-200"
                     on:click={handleAddToCart}
                     disabled={!selectedColor || (hasSizeVariations && !selectedSize)}
-                    title={(!selectedColor || (hasSizeVariations && !selectedSize)) ? 'Please select all required variations' : 'Add to cart'}
+                    title={(!selectedColor || (hasSizeVariations && !selectedSize)) ? 'Please select all required variations' : buyNow ? 'Checkout' : 'Add to cart'}
                 >
-                    Add to Cart
+                    {buyNow ? 'Checkout' : 'Add to Cart'}
                 </button>
             </div>
         </div>

@@ -1,12 +1,19 @@
 <script lang="ts">
     import CustomerSidebar from '$lib/components/CustomerSidebar.svelte';
     import Alerts from '$lib/components/Alerts.svelte';
+    import { reviewStore } from '$lib/stores/reviews';
+    import { auth } from '$lib/stores/auth';
+    import { onMount } from 'svelte';
+    import { goto } from '$app/navigation';
     
     let activeTab = 'All';
     const tabs = ['All', 'Pending', 'To Ship', 'To Receive', 'Completed'];
     
+    // Search functionality
+    let searchQuery = '';
+    
     // Mock data for orders
-    const orders = [
+    let orders = [
         {
             id: '1001',
             item: {
@@ -76,15 +83,61 @@
             status: 'completed',
             date: '2023-10-15',
             seller: 'CableConnect'
+        },
+        // Additional pending orders for testing the cancel order functionality
+        {
+            id: '1006',
+            item: {
+                name: 'Wireless Mouse',
+                image: 'https://placehold.co/100x100',
+                price: 29.99
+            },
+            quantity: 1,
+            total_price: 29.99,
+            status: 'pending',
+            date: '2023-11-15',
+            seller: 'OfficeSupplies'
+        },
+        {
+            id: '1007',
+            item: {
+                name: 'Ergonomic Keyboard',
+                image: 'https://placehold.co/100x100',
+                price: 69.99
+            },
+            quantity: 1,
+            total_price: 69.99,
+            status: 'pending',
+            date: '2023-11-16',
+            seller: 'ComputerWorld'
+        },
+        {
+            id: '1008',
+            item: {
+                name: 'External Hard Drive 1TB',
+                image: 'https://placehold.co/100x100',
+                price: 89.99
+            },
+            quantity: 1,
+            total_price: 89.99,
+            status: 'pending',
+            date: '2023-11-17',
+            seller: 'StorageSolutions'
         }
     ];
     
-    // Filter orders based on active tab
+    // Filter orders based on active tab and search query
     $: filteredOrders = activeTab === 'All' 
-        ? orders 
+        ? orders.filter(order => 
+            searchQuery.trim() === '' || 
+            order.item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            order.seller.toLowerCase().includes(searchQuery.toLowerCase()))
         : orders.filter(order => {
             const status = activeTab.toLowerCase().replace(' ', '_');
-            return order.status === status;
+            return order.status === status && 
+                (searchQuery.trim() === '' || 
+                 order.item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                 order.seller.toLowerCase().includes(searchQuery.toLowerCase()));
         });
     
     function setActiveTab(tab: string) {
@@ -99,27 +152,83 @@
         }
     }
 
+    // Order received function
+    function markOrderReceived(orderId: string) {
+        const orderIndex = orders.findIndex(o => o.id === orderId);
+        if (orderIndex !== -1) {
+            // Change order status to completed
+            orders[orderIndex].status = 'completed';
+            // Add the current date as the completed date
+            orders[orderIndex].date = new Date().toISOString().split('T')[0];
+            
+            // Show success alert
+            alertType = 'success';
+            alertTitle = 'Order Marked as Received';
+            showAlert = true;
+            
+            // Switch to the completed tab after marking as received
+            setActiveTab('Completed');
+            
+            // Update localStorage with current orders
+            updateOrdersInLocalStorage();
+        }
+    }
+
+    // Cancel order function
+    function cancelOrder(orderId: string) {
+        const orderIndex = orders.findIndex(o => o.id === orderId);
+        if (orderIndex !== -1) {
+            // Remove the order from the array
+            orders.splice(orderIndex, 1);
+            
+            // Show success alert
+            alertType = 'success';
+            alertTitle = 'Order Cancelled';
+            cartAdded = 'Order has been cancelled';
+            showAlert = true;
+            
+            // Ensure we're looking at the right tab
+            setActiveTab('Pending');
+            
+            // Update localStorage with current orders
+            updateOrdersInLocalStorage();
+        }
+    }
+    
+    // Function to update orders in localStorage
+    function updateOrdersInLocalStorage() {
+        // Get the pending orders
+        const pendingOrders = orders.filter(order => order.status === 'pending');
+        // Save to localStorage
+        localStorage.setItem('pendingOrders', JSON.stringify(pendingOrders));
+    }
+
     // Review Modal
     let showReviewModal = false;
-    let selectedProduct: {name: string; image: string; variation: string} | null = null;
+    let selectedProduct: {id: number; name: string; image: string; variation: string} | null = null;
+    let selectedOrderId: string = '';
     let rating = 5;
     let reviewText = '';
-    
-    // Order Details Modal
-    let showOrderDetailsModal = false;
-    let selectedOrder: any = null;
+    let reviewImages: string[] = []; // Array to store the selected images
+    let maxImages = 3; // Maximum number of images allowed
     
     // Alert state
     let showAlert = false;
+    let alertType: 'success' | 'delete-account' | 'delete-countdown' | 'review-success' | 'error' = 'review-success';
+    let alertTitle = 'Review Submitted';
+    let cartAdded = 'Order Completed';
     
     function openReviewModal(order: any) {
         selectedProduct = {
+            id: Number(order.id), // Store the product ID
             name: order.item.name,
             image: order.item.image,
             variation: 'Black' // Default variation for mock data
         };
+        selectedOrderId = order.id;
         rating = 5; // Default to 5 stars
         reviewText = '';
+        reviewImages = []; // Reset images when opening modal
         showReviewModal = true;
     }
 
@@ -127,33 +236,125 @@
         showReviewModal = false;
     }
     
-    function openOrderDetailsModal(order: any) {
-        selectedOrder = order;
-        showOrderDetailsModal = true;
+    function handleImageSelection(event: Event) {
+        const input = event.target as HTMLInputElement;
+        if (input.files && input.files.length > 0) {
+            // Only add more images if below the maximum limit
+            if (reviewImages.length < maxImages) {
+                const file = input.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    if (e.target && typeof e.target.result === 'string') {
+                        reviewImages = [...reviewImages, e.target.result];
+                    }
+                };
+                
+                reader.readAsDataURL(file);
+            }
+            
+            // Reset the input value so the same file can be selected again if needed
+            input.value = '';
+        }
     }
     
-    function closeOrderDetailsModal() {
-        showOrderDetailsModal = false;
+    function removeImage(index: number) {
+        reviewImages = reviewImages.filter((_, i) => i !== index);
     }
 
-    function submitReview() {
-        // Here you would implement the logic to submit the review to your backend
-        console.log('Submitting review:', {
-            product: selectedProduct,
-            rating,
-            reviewText
-        });
-        
-        // Close the modal after submission
-        closeReviewModal();
-        
-        // Show the alert instead of using alert()
-        showAlert = true;
+    async function submitReview() {
+        if (!selectedProduct || !reviewText) {
+            alertType = 'error';
+            alertTitle = 'Error';
+            showAlert = true;
+            return;
+        }
+
+        try {
+            // Create the review object
+            const review = {
+                product_id: selectedProduct.id,
+                user_id: $auth.user?.id || 1, // Default to 1 if not logged in
+                user_name: $auth.user?.name || 'John Doe',
+                user_image: 'https://randomuser.me/api/portraits/men/1.jpg', // Default image
+                rating: rating,
+                comment: reviewText,
+                images: reviewImages
+            };
+
+            // Add the review to the store
+            await reviewStore.addReview(review);
+
+            // Update the order to show it has been reviewed
+            const orderIndex = orders.findIndex(o => o.id === selectedOrderId);
+            if (orderIndex !== -1) {
+                orders[orderIndex].review = {
+                    rating: rating,
+                    text: reviewText,
+                    date: new Date().toISOString().split('T')[0]
+                };
+            }
+
+            // Close the modal after submission
+            closeReviewModal();
+            
+            // Show the success alert
+            alertType = 'review-success';
+            alertTitle = 'Review Submitted';
+            showAlert = true;
+            
+            // Update localStorage with the current orders
+            updateOrdersInLocalStorage();
+        } catch (error) {
+            console.error('Error submitting review:', error);
+            alertType = 'error';
+            alertTitle = 'Error Submitting Review';
+            showAlert = true;
+        }
     }
     
     function closeAlert() {
         showAlert = false;
     }
+
+    function navigateToHome() {
+        goto('/page-customer/home');
+    }
+
+    onMount(() => {
+        // Load pending orders from localStorage
+        const storedOrders = localStorage.getItem('pendingOrders');
+        if (storedOrders) {
+            try {
+                const parsedOrders = JSON.parse(storedOrders);
+                
+                // Filter out any duplicate orders with the same ID
+                const existingOrderIds = new Set(orders.map(o => o.id));
+                const newOrders = parsedOrders.filter(o => !existingOrderIds.has(o.id));
+                
+                // Combine with existing orders
+                orders = [...orders, ...newOrders];
+            } catch (error) {
+                console.error('Error parsing orders from localStorage:', error);
+            }
+        }
+        
+        // Set the active tab to Pending if came from checkout
+        const fromCheckout = sessionStorage.getItem('fromCheckout');
+        if (fromCheckout === 'true') {
+            setActiveTab('Pending');
+            sessionStorage.removeItem('fromCheckout');
+        }
+        
+        // Listen for search events from the layout
+        window.addEventListener('searchPurchases', ((event: CustomEvent) => {
+            searchQuery = event.detail.query;
+        }) as EventListener);
+        
+        return () => {
+            window.removeEventListener('searchPurchases', ((event: CustomEvent) => {}) as EventListener);
+        };
+    });
 </script>
 
 <CustomerSidebar />
@@ -218,7 +419,6 @@
                         </div>
                         
                         <div class="order-actions">
-                            <button class="btn-action" on:click={() => openOrderDetailsModal(order)}>View Details</button>
                             {#if order.status === 'completed'}
                                 {#if order.review}
                                     <div class="review-box">
@@ -238,14 +438,14 @@
                                         <p class="review-text">{order.review.text}</p>
                                     </div>
                                 {:else}
-                                    <button class="btn-action" on:click={() => openReviewModal(order)}>Write Review</button>
+                                    <button class="rate-button" on:click={() => openReviewModal(order)}>Rate</button>
                                 {/if}
                             {/if}
                             {#if order.status === 'to_receive'}
-                                <button class="btn-action primary">Confirm Receipt</button>
+                                <button class="btn-action primary" on:click={() => markOrderReceived(order.id)}>Order Received</button>
                             {/if}
                             {#if order.status === 'pending'}
-                                <button class="btn-action cancel">Cancel Order</button>
+                                <button class="btn-action cancel" on:click={() => cancelOrder(order.id)}>Cancel Order</button>
                             {/if}
                         </div>
                     </div>
@@ -257,7 +457,7 @@
                         <polyline points="9 22 9 12 15 12 15 22"></polyline>
                     </svg>
                     <p>No orders found in this category</p>
-                    <button class="btn-primary">Start Shopping</button>
+                    <button class="btn-primary" on:click={navigateToHome}>Start Shopping</button>
                 </div>
             {/if}
         </div>
@@ -292,8 +492,8 @@
                                 <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
                             </svg>
                         </button>
-                    {/each}
-                    <span class="rating-text">
+                        {/each}
+                        <span class="rating-text">
                         {#if rating === 1}Poor
                         {:else if rating === 2}Fair
                         {:else if rating === 3}Good
@@ -312,6 +512,37 @@
                 ></textarea>
             </div>
             
+            <!-- Image Upload Section -->
+            <div class="image-upload-section">
+                <p>Add Photos (Optional)</p>
+                <div class="image-preview-container">
+                    {#each reviewImages as image, index}
+                        <div class="image-preview">
+                            <img src={image} alt="Review image" />
+                            <button class="remove-image-btn" on:click={() => removeImage(index)}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
+                                    <path fill="none" d="M0 0h24v24H0z"/>
+                                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+                                </svg>
+                            </button>
+                        </div>
+                    {/each}
+                    
+                    {#if reviewImages.length < maxImages}
+                        <label class="upload-btn">
+                            <input type="file" accept="image/*" on:change={handleImageSelection} />
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                <circle cx="8.5" cy="8.5" r="1.5" />
+                                <polyline points="21 15 16 10 5 21" />
+                            </svg>
+                            <span>Add Photo</span>
+                        </label>
+                    {/if}
+                </div>
+                <p class="image-limit-text">{reviewImages.length} of {maxImages} photos</p>
+            </div>
+            
             <div class="modal-buttons">
                 <button class="btn-cancel" on:click={closeReviewModal}>Cancel</button>
                 <button class="btn-submit" on:click={submitReview}>Submit</button>
@@ -321,106 +552,12 @@
 </div>
 {/if}
 
-<!-- Order Details Modal -->
-{#if showOrderDetailsModal && selectedOrder}
-<div class="modal-overlay">
-    <div class="modal-container order-details-modal">
-        <div class="modal-content">
-            <button class="close-modal-btn" on:click={closeOrderDetailsModal}>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="none" d="M0 0h24v24H0z"/>
-                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
-                </svg>
-            </button>
-            <h2>Order Details</h2>
-            
-            <div class="order-details-section">
-                <div class="order-details-header">
-                    <div>
-                        <h3>Order #{selectedOrder.id}</h3>
-                        <p class="order-date-detail">Placed on {selectedOrder.date}</p>
-                    </div>
-                    <span class="status-badge detail-badge {selectedOrder.status}">
-                        {selectedOrder.status.replace('_', ' ').toUpperCase()}
-                    </span>
-                </div>
-                
-                <div class="order-details-content">
-                    <div class="detail-card">
-                        <h4>Product Information</h4>
-                        <div class="product-info-detail">
-                            <img src={selectedOrder.item.image} alt={selectedOrder.item.name} class="product-image-detail" />
-                            <div>
-                                <h5>{selectedOrder.item.name}</h5>
-                                <p>Seller: {selectedOrder.seller}</p>
-                                <p>Price: ${selectedOrder.item.price.toFixed(2)}</p>
-                                <p>Quantity: {selectedOrder.quantity}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="detail-card">
-                        <h4>Payment Information</h4>
-                        <div class="detail-info">
-                            <div class="detail-row">
-                                <span>Subtotal:</span>
-                                <span>${(selectedOrder.item.price * selectedOrder.quantity).toFixed(2)}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span>Shipping Fee:</span>
-                                <span>$5.00</span>
-                            </div>
-                            <div class="detail-row">
-                                <span>Discount:</span>
-                                <span>-$5.00</span>
-                            </div>
-                            <div class="detail-row total">
-                                <span>Total:</span>
-                                <span>${selectedOrder.total_price.toFixed(2)}</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    {#if selectedOrder.status === 'completed' && selectedOrder.review}
-                    <div class="detail-card">
-                        <h4>Your Review</h4>
-                        <div class="review-box detail-review">
-                            <div class="review-header">
-                                <div class="star-display">
-                                    {#each Array(5) as _, i}
-                                        <span class="star {i < selectedOrder.review.rating ? 'filled' : ''}">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
-                                                <path fill="none" d="M0 0h24v24H0z"/>
-                                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
-                                            </svg>
-                                        </span>
-                                    {/each}
-                                </div>
-                                <span class="review-date">Reviewed on {selectedOrder.review.date}</span>
-                            </div>
-                            <p class="review-text">{selectedOrder.review.text}</p>
-                        </div>
-                    </div>
-                    {/if}
-                </div>
-            </div>
-            
-            <div class="modal-buttons">
-                <button class="btn-cancel" on:click={closeOrderDetailsModal}>Close</button>
-                {#if selectedOrder.status === 'to_receive'}
-                    <button class="btn-submit">Confirm Receipt</button>
-                {/if}
-            </div>
-        </div>
-    </div>
-</div>
-{/if}
-
 <!-- Success Alert -->
 <Alerts 
     isVisible={showAlert}
-    type="review-success"
-    title="Review Submitted"
+    type={alertType}
+    title={alertTitle}
+    cartAdded={cartAdded}
     on:close={closeAlert}
 />
 
@@ -652,9 +789,9 @@
     }
     
     .btn-action.primary {
-        background-color: #2b4b66;
+        background-color: #789DBC;
         color: white;
-        border-color: #2b4b66;
+        border-color: #789DBC;
     }
     
     .btn-action.primary:hover {
@@ -668,7 +805,7 @@
     }
     
     .btn-action.cancel:hover {
-        background-color: #ffebee;
+        background-color: #789DBC;
     }
     
     /* Empty state */
@@ -693,7 +830,7 @@
     
     .btn-primary {
         padding: 0.75rem 1.5rem;
-        background-color: #2b4b66;
+        background-color: #789DBC;
         color: white;
         border: none;
         border-radius: 4px;
@@ -844,6 +981,21 @@
         background-color: #1e3a52;
     }
 
+    .rate-button {
+        background-color: #789DBC;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .rate-button:hover {
+        background-color: #1e3a52;
+    }
+
     .review-box {
         background-color: #f9f9f9;
         border: 1px solid #eee;
@@ -884,165 +1036,86 @@
         line-height: 1.4;
     }
 
-    /* Order Details Modal Styles */
-    .order-details-modal {
-        max-width: 600px;
+    /* Image Upload Styles */
+    .image-upload-section {
+        margin-bottom: 1.5rem;
     }
     
-    .close-modal-btn {
+    .image-upload-section p {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+    
+    .image-preview-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .image-preview {
+        position: relative;
+        width: 80px;
+        height: 80px;
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid #ddd;
+    }
+    
+    .image-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .remove-image-btn {
         position: absolute;
-        top: 1rem;
-        right: 1rem;
-        background: none;
+        top: 0;
+        right: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        color: white;
         border: none;
-        cursor: pointer;
-        color: #777;
-        padding: 4px;
-        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        border-radius: 0 0 0 4px;
         display: flex;
         align-items: center;
         justify-content: center;
+        cursor: pointer;
     }
     
-    .close-modal-btn:hover {
-        background-color: #f5f5f5;
-        color: #333;
-    }
-    
-    .order-details-section {
-        margin-bottom: 1.5rem;
-    }
-    
-    .order-details-header {
+    .upload-btn {
         display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 1.5rem;
-    }
-    
-    .order-date-detail {
-        color: #777;
-        font-size: 0.9rem;
-        margin: 0.25rem 0 0 0;
-    }
-    
-    .detail-badge {
-        margin: 0;
-    }
-    
-    .detail-card {
-        background-color: #f9f9f9;
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .detail-card h4 {
-        margin-top: 0;
-        margin-bottom: 0.75rem;
-        color: #444;
-        font-size: 1rem;
-    }
-    
-    .product-info-detail {
-        display: flex;
+        flex-direction: column;
         align-items: center;
-    }
-    
-    .product-image-detail {
+        justify-content: center;
         width: 80px;
         height: 80px;
-        object-fit: cover;
+        border: 1px dashed #bbb;
         border-radius: 4px;
-        margin-right: 1rem;
+        cursor: pointer;
+        color: #777;
+        background-color: #f9f9f9;
+        transition: all 0.2s;
     }
     
-    .product-info-detail h5 {
-        margin: 0 0 0.5rem 0;
-        font-size: 1.1rem;
+    .upload-btn:hover {
+        border-color: #999;
+        background-color: #f5f5f5;
     }
     
-    .product-info-detail p {
-        margin: 0.25rem 0;
-        color: #555;
+    .upload-btn input[type="file"] {
+        display: none;
     }
     
-    .detail-info {
-        padding: 0 0.5rem;
+    .upload-btn span {
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
     }
     
-    .detail-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #eee;
-    }
-    
-    .detail-row.total {
-        font-weight: 600;
-        font-size: 1.1rem;
-        border-bottom: none;
-        padding-top: 0.75rem;
-    }
-    
-    .detail-review {
-        margin: 0;
-    }
-    
-    @media (max-width: 768px) {
-        .content {
-            margin-left: 0;
-            padding: 1rem;
-        }
-        
-        .tabs {
-            padding: 0 0.5rem;
-        }
-        
-        .tab-button {
-            padding: 0.5rem 1rem;
-            white-space: nowrap;
-            flex: 0 0 auto;
-        }
-        
-        .scroll-btn {
-            display: flex;
-        }
-        
-        .order-item {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        
-        .item-image {
-            margin-bottom: 0.75rem;
-        }
-        
-        .item-details {
-            padding: 0;
-            margin-bottom: 0.75rem;
-            width: 100%;
-        }
-        
-        .item-status {
-            width: 100%;
-            align-items: flex-start;
-        }
-        
-        .order-actions {
-            flex-wrap: wrap;
-        }
-        
-        .modal-container {
-            width: 95%;
-        }
-        
-        .order-details-header {
-            flex-direction: column;
-        }
-        
-        .status-badge.detail-badge {
-            margin-top: 0.5rem;
-        }
+    .image-limit-text {
+        font-size: 0.8rem;
+        color: #777;
+        margin-top: 0.25rem;
     }
 </style>

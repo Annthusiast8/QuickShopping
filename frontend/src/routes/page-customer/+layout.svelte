@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import CartIndicator from '$lib/components/CartIndicator.svelte';
+  import Alerts from '$lib/components/Alerts.svelte';
 
   //*Check if user is logged in and is a customer (COMMENT)
   /*onMount(() => {
@@ -17,9 +18,20 @@
     }
   }); */
 
+  // Logout alert state
+  let showLogoutAlert = false;
+
   function logout() {
+    showLogoutAlert = true;
+  }
+
+  function handleConfirmLogout() {
     auth.logout();
     goto('/login');
+  }
+
+  function closeLogoutAlert() {
+    showLogoutAlert = false;
   }
 
   // Navigation items
@@ -60,7 +72,87 @@
   let sortBy = 'none';
   let sortOrder = 'asc';
   let showCategoryAccordion = false;
-  let filterMenuRef: HTMLDivElement;
+  let filterMenuRef: HTMLDivElement | null = null;
+
+  // Search state
+  let searchQuery = '';
+  let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+  const SEARCH_DELAY = 300; // ms delay for search to prevent too many searches while typing
+
+  function handleSearch(e: Event) {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      // Get current page path
+      const currentPath = $page.url.pathname;
+      
+      // If we're already on the home page, dispatch searchProducts event
+      if (currentPath.includes('/page-customer/home')) {
+        window.dispatchEvent(new CustomEvent('searchProducts', {
+          detail: { query: searchQuery.trim() }
+        }));
+      } 
+      // If we're on the cart page, filter cart items
+      else if (currentPath.includes('/page-customer/cart')) {
+        window.dispatchEvent(new CustomEvent('searchCart', {
+          detail: { query: searchQuery.trim() }
+        }));
+      }
+      // If we're on my-purchases page, filter orders
+      else if (currentPath.includes('/page-customer/profile/my-purchases')) {
+        window.dispatchEvent(new CustomEvent('searchPurchases', {
+          detail: { query: searchQuery.trim() }
+        }));
+      }
+      // Otherwise navigate to search page
+      else {
+        goto(`/page-customer/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      }
+    }
+  }
+
+  function handleSearchInput() {
+    // Clear previous timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    // Set new timeout to delay search until typing stops
+    searchTimeout = setTimeout(() => {
+      const currentPath = $page.url.pathname;
+      
+      // Only trigger search if we're on a searchable page and have query text
+      if (searchQuery.trim()) {
+        if (currentPath.includes('/page-customer/home')) {
+          window.dispatchEvent(new CustomEvent('searchProducts', {
+            detail: { query: searchQuery.trim() }
+          }));
+        } else if (currentPath.includes('/page-customer/cart')) {
+          window.dispatchEvent(new CustomEvent('searchCart', {
+            detail: { query: searchQuery.trim() }
+          }));
+        } else if (currentPath.includes('/page-customer/profile/my-purchases')) {
+          window.dispatchEvent(new CustomEvent('searchPurchases', {
+            detail: { query: searchQuery.trim() }
+          }));
+        }
+      } else {
+        // If search is cleared, reset the search
+        if (currentPath.includes('/page-customer/home')) {
+          window.dispatchEvent(new CustomEvent('searchProducts', {
+            detail: { query: '' }
+          }));
+        } else if (currentPath.includes('/page-customer/cart')) {
+          window.dispatchEvent(new CustomEvent('searchCart', {
+            detail: { query: '' }
+          }));
+        } else if (currentPath.includes('/page-customer/profile/my-purchases')) {
+          window.dispatchEvent(new CustomEvent('searchPurchases', {
+            detail: { query: '' }
+          }));
+        }
+      }
+    }, SEARCH_DELAY);
+  }
 
   function toggleFilterMenu() {
     showFilterMenu = !showFilterMenu;
@@ -127,7 +219,26 @@
         <div class="flex-1 max-w-full sm:max-w-2xl sm:mx-8 flex items-center">
           <!-- Filter Button - Only show on home page -->
           
-          <!-- Search Bar removed -->
+          <!-- Search Bar -->
+          <form on:submit={handleSearch} class="w-full">
+            <div class="relative flex items-center bg-[#f2f2f2] rounded-full">
+              <input
+                bind:value={searchQuery}
+                on:input={handleSearchInput}
+                placeholder="Search product..."
+                class="block w-full pl-4 pr-10 py-2 bg-transparent border-none rounded-full focus:outline-none focus:ring-0 sm:text-sm"
+              />
+              <button 
+                type="submit" 
+                class="absolute right-0 p-2 rounded-full focus:outline-none"
+              >
+                <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </button>
+            </div>
+          </form>
         </div>
 
         <!-- Navigation Icons -->
@@ -209,4 +320,12 @@
   <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
     <slot />
   </main>
+
+  <!-- Logout Alert -->
+  <Alerts 
+    isVisible={showLogoutAlert}
+    type="logout-confirm"
+    on:close={closeLogoutAlert}
+    on:confirmLogout={handleConfirmLogout}
+  />
 </div> 
