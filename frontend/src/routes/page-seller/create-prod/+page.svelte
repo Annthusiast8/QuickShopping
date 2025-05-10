@@ -39,6 +39,15 @@
 
     // Modal state
     let showModal = $state(false);
+    let showEditModal = $state(false);
+    let showDeleteModal = $state(false);
+    let productToDelete = $state<{
+        id: number;
+        name: string;
+        price: string;
+        image: string;
+        rating: number;
+    } | null>(null);
 
     // Dummy modal data (Replace this with selected product data from backend)
     let modalProduct = $state({
@@ -56,6 +65,8 @@
         sizes: ['22oz', '34oz', '40oz'],
         stock: 500
     });
+
+    let editProduct = $state({...modalProduct});
     // --- END DUMMY DATA SECTION ---
 
     // The following functions are for demo only and should be replaced with real logic
@@ -81,31 +92,41 @@
     function addVariation() {
         alert('Add variation not implemented (Demo only)');
     }
+    function handleEdit() {
+        alert('Product updated! (Demo only)');
+        showEditModal = false;
+    }
+    function handleDelete() {
+        // Here you would typically make an API call to delete the product
+        alert('Product deleted! (Demo only)');
+        showDeleteModal = false;
+        productToDelete = null;
+    }
 </script>
 
 <Header />
 
-<div class="page-container">
-    <div class="product-grid">
-        <div class="product-card create-card" on:click={() => showModal = true}>
-            <div class="plus">+</div>
-            <div class="create-label">Create new Product</div>
+<div class="flex ml-52 mt-16 bg-[#f6ecd3] min-h-[calc(100vh-60px)] max-md:ml-0 max-md:flex-col">
+    <div class="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4 p-4 flex-1 content-start w-full max-md:p-2 max-sm:grid-cols-1">
+        <div class="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.07)] p-4 flex flex-col items-start min-h-[270px] relative hover:shadow-[0_4px_16px_rgba(0,0,0,0.13)] transition-shadow w-full justify-center items-center cursor-pointer border-2 border-dashed border-[#cfc6b0] text-[#b2a07a] max-sm:min-h-[200px]" on:click={() => showModal = true}>
+            <div class="text-5xl font-light mb-2 max-sm:text-4xl">+</div>
+            <div class="text-lg font-medium max-sm:text-base">Create new Product</div>
         </div>
         {#each products as product}
-            <div class="product-card">
-                <img class="product-image" src={product.image} alt={product.name} />
-                <div class="product-info">
-                    <div class="product-name">{product.name}</div>
-                    <div class="product-price">{product.price}</div>
-                    <div class="product-rating">
+            <div class="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.07)] p-4 flex flex-col items-start min-h-[270px] relative hover:shadow-[0_4px_16px_rgba(0,0,0,0.13)] transition-shadow w-full max-sm:min-h-[200px]">
+                <img class="w-full h-[32vh] object-cover rounded-md mb-3 max-sm:h-[24vh]" src={product.image} alt={product.name} />
+                <div class="w-full mb-2">
+                    <div class="text-base font-semibold text-[#222] mb-1 max-sm:text-sm">{product.name}</div>
+                    <div class="text-[0.98rem] text-[#7a6d53] mb-1 max-sm:text-sm">{product.price}</div>
+                    <div class="text-[#f5c518] text-base max-sm:text-sm">
                         {#each Array(product.rating) as _, i}
                             <span class="star">★</span>
                         {/each}
                     </div>
                 </div>
-                <div class="product-actions">
-                    <span class="icon edit">✎</span>
-                    <span class="icon delete">🗑️</span>
+                <div class="absolute bottom-4 right-4 flex gap-3">
+                    <span class="text-[1.15rem] cursor-pointer opacity-70 hover:opacity-100 transition-opacity max-sm:text-base" on:click={() => { editProduct = {...product}; showEditModal = true; }}>✎</span>
+                    <span class="text-[1.15rem] cursor-pointer opacity-70 hover:opacity-100 transition-opacity max-sm:text-base" on:click={() => { productToDelete = product; showDeleteModal = true; }}>🗑️</span>
                 </div>
             </div>
         {/each}
@@ -113,431 +134,182 @@
 </div>
 
 {#if showModal}
-<div class="modal-overlay">
-    <div class="modal-box">
-        <div class="modal-header">
-            <span class="modal-title">NEW PRODUCT</span>
-            <img src="/X.png" alt="Close" class="modal-close" on:click={() => showModal = false} />
+<div class="fixed inset-0 bg-black/20 z-[2000] flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-[#fdf7ec] rounded-3xl shadow-[0_4px_32px_rgba(0,0,0,0.18)] p-6 min-w-[320px] max-w-[900px] w-[90vw] min-h-[420px] border-4 border-[#e2dbc7] flex flex-col gap-5 max-[1100px]:max-w-[98vw] max-[1100px]:p-4 max-[600px]:w-[99vw] max-[600px]:p-2 my-4 max-sm:min-h-[auto]">
+        <div class="flex justify-between items-center mb-2 max-[600px]:flex-col max-[600px]:items-start max-[600px]:gap-2">
+            <span class="text-xl font-bold text-[#4a463b] tracking-wide max-sm:text-lg">NEW PRODUCT</span>
+            <img src="/X.png" alt="Close" class="w-7 h-7 cursor-pointer hover:brightness-75 transition-filter max-sm:w-6 max-sm:h-6" on:click={() => showModal = false} />
         </div>
-        <div class="modal-content">
-            <div class="modal-left">
-                <div class="modal-image-wrap">
-                    <img class="modal-image" src={modalProduct.image} alt="Product" />
-                    <span class="modal-image-add" on:click={addImage}>+</span>
+        <div class="flex gap-8 max-[1100px]:gap-4 max-[900px]:flex-col max-[900px]:gap-5 max-[600px]:gap-3">
+            <div class="flex-1 flex flex-col items-center gap-4 max-[900px]:w-full max-[900px]:items-stretch max-[600px]:gap-3">
+                <div class="relative w-[180px] h-[220px] bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.08)] flex items-center justify-center max-[900px]:w-[120px] max-[900px]:h-[140px] max-[600px]:w-[80px] max-[600px]:h-[90px]">
+                    <img class="w-[140px] h-[180px] object-contain max-[900px]:w-[90px] max-[900px]:h-[110px] max-[600px]:w-[60px] max-[600px]:h-[70px]" src={modalProduct.image} alt="Product" />
+                    <span class="absolute top-2 left-2 bg-white rounded-full w-6 h-6 flex items-center justify-center text-xl text-[#b2a07a] border-2 border-[#e2dbc7] cursor-pointer max-sm:w-5 max-sm:h-5 max-sm:text-base" on:click={addImage}>+</span>
                 </div>
-                <div class="modal-variation">
+                <div class="flex items-center gap-2">
                     {#each modalProduct.variations as v}
-                        <img class="variation-thumb" src={v} alt="Variation" />
+                        <img class="w-[38px] h-[38px] rounded-lg object-cover bg-white shadow-[0_1px_4px_rgba(0,0,0,0.07)] border-2 border-[#e2dbc7] max-[600px]:w-7 max-[600px]:h-7" src={v} alt="Variation" />
                     {/each}
-                    <span class="variation-add" on:click={addVariation}>+</span>
+                    <span class="w-7 h-7 rounded-full bg-white border-2 border-dashed border-[#b2a07a] text-[#b2a07a] flex items-center justify-center text-xl cursor-pointer max-[600px]:w-6 max-[600px]:h-6" on:click={addVariation}>+</span>
                 </div>
-                <div class="modal-field-label">Product Name</div>
-                <input class="modal-input" value={modalProduct.name} readonly />
-                <div class="modal-field-label">Price</div>
-                <input class="modal-input" value={modalProduct.price} readonly />
+                <div class="text-base font-medium text-[#7a6d53] mb-1 mt-3 max-[600px]:text-sm">Product Name</div>
+                <input class="w-full p-3 rounded-2xl border-2 border-[#e2dbc7] bg-[#f8f5ee] text-base text-[#4a463b] mb-2 max-[600px]:text-sm max-[600px]:p-2" value={modalProduct.name} readonly />
+                <div class="text-base font-medium text-[#7a6d53] mb-1 max-[600px]:text-sm">Price</div>
+                <input class="w-full p-3 rounded-2xl border-2 border-[#e2dbc7] bg-[#f8f5ee] text-base text-[#4a463b] mb-2 max-[600px]:text-sm max-[600px]:p-2" value={modalProduct.price} readonly />
             </div>
-            <div class="modal-right">
-                <div class="modal-field-label">Detail</div>
-                <textarea class="modal-textarea" readonly>{modalProduct.detail}</textarea>
-                <div class="modal-field-label">Category <span class="edit-icon" on:click={() => addTag('categories')}>✎</span></div>
-                <div class="modal-tags">
+            <div class="flex-[1.3] flex flex-col gap-2 max-[900px]:w-full max-[900px]:items-stretch">
+                <div class="text-base font-medium text-[#7a6d53] mb-1 max-[600px]:text-sm">Detail</div>
+                <textarea class="w-full min-h-[60px] rounded-xl border-2 border-[#e2dbc7] bg-[#f8f5ee] text-base p-3 text-[#4a463b] mb-3 resize-none max-[600px]:text-sm max-[600px]:p-2" readonly>{modalProduct.detail}</textarea>
+                <div class="text-base font-medium text-[#7a6d53] mb-1 flex items-center max-[600px]:text-sm">
+                    Category
+                    <span class="text-base text-[#b2a07a] ml-1 cursor-pointer max-[600px]:text-sm" on:click={() => addTag('categories')}>✎</span>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-2">
                     {#each modalProduct.categories as cat, i}
-                        <span class="modal-tag">{cat} <span class="tag-x" on:click={() => removeTag('categories', i)}>×</span></span>
+                        <span class="bg-[#f3ead2] text-[#7a6d53] rounded-2xl px-3 py-1 text-[0.97rem] flex items-center gap-1 max-[600px]:text-sm">
+                            {cat}
+                            <span class="text-[1.1rem] text-[#b2a07a] cursor-pointer ml-1 max-[600px]:text-base" on:click={() => removeTag('categories', i)}>×</span>
+                        </span>
                     {/each}
                 </div>
-                <div class="modal-field-label">Color <span class="edit-icon" on:click={() => addTag('colors')}>+</span></div>
-                <div class="modal-tags">
+                <div class="text-base font-medium text-[#7a6d53] mb-1 flex items-center max-[600px]:text-sm">
+                    Color
+                    <span class="text-base text-[#b2a07a] ml-1 cursor-pointer max-[600px]:text-sm" on:click={() => addTag('colors')}>+</span>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-2">
                     {#each modalProduct.colors as color, i}
-                        <span class="modal-tag">{color} <span class="tag-x" on:click={() => removeTag('colors', i)}>×</span></span>
+                        <span class="bg-[#f3ead2] text-[#7a6d53] rounded-2xl px-3 py-1 text-[0.97rem] flex items-center gap-1 max-[600px]:text-sm">
+                            {color}
+                            <span class="text-[1.1rem] text-[#b2a07a] cursor-pointer ml-1 max-[600px]:text-base" on:click={() => removeTag('colors', i)}>×</span>
+                        </span>
                     {/each}
                 </div>
-                <div class="modal-field-label">Sizes <span class="edit-icon" on:click={() => addTag('sizes')}>+</span></div>
-                <div class="modal-tags">
+                <div class="text-base font-medium text-[#7a6d53] mb-1 flex items-center max-[600px]:text-sm">
+                    Sizes
+                    <span class="text-base text-[#b2a07a] ml-1 cursor-pointer max-[600px]:text-sm" on:click={() => addTag('sizes')}>+</span>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-2">
                     {#each modalProduct.sizes as size, i}
-                        <span class="modal-tag">{size} <span class="tag-x" on:click={() => removeTag('sizes', i)}>×</span></span>
+                        <span class="bg-[#f3ead2] text-[#7a6d53] rounded-2xl px-3 py-1 text-[0.97rem] flex items-center gap-1 max-[600px]:text-sm">
+                            {size}
+                            <span class="text-[1.1rem] text-[#b2a07a] cursor-pointer ml-1 max-[600px]:text-base" on:click={() => removeTag('sizes', i)}>×</span>
+                        </span>
                     {/each}
                 </div>
-                <div class="modal-field-label">Stock</div>
-                <input class="modal-input" value={modalProduct.stock} readonly />
-                <button class="modal-add-btn" on:click={handleAdd}>ADD</button>
+                <div class="text-base font-medium text-[#7a6d53] mb-1 max-[600px]:text-sm">Stock</div>
+                <input class="w-full p-3 rounded-2xl border-2 border-[#e2dbc7] bg-[#f8f5ee] text-base text-[#4a463b] mb-2 max-[600px]:text-sm max-[600px]:p-2" value={modalProduct.stock} readonly />
+                <button class="mt-5 w-full h-12 bg-[#4a6d96] text-white rounded-3xl text-lg font-semibold shadow-[0_2px_8px_rgba(74,109,150,0.13)] hover:bg-[#39567a] transition-colors max-[900px]:h-10 max-[900px]:text-base max-[600px]:h-9 max-[600px]:text-sm" on:click={handleAdd}>ADD</button>
             </div>
         </div>
     </div>
 </div>
 {/if}
 
-<style>
-    .page-container {
-        display: flex;
-        margin-left: 200px;
-        margin-top: 60px;
-        background: #f6ecd3;
-        min-height: calc(100vh - 60px);
-    }
-    .product-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-        gap: .5rem;
-        padding: 2rem;
-        flex: 1;
-        align-content: flex-start;
-        width: 73%;
-    }
-    .product-card {
-        background: #fff;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-        padding: 1rem;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        min-height: 270px;
-        position: relative;
-        transition: box-shadow 0.2s;
-        width: 73%;
+{#if showEditModal}
+<div class="fixed inset-0 bg-black/20 z-[2000] flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-[#fdf7ec] rounded-3xl shadow-[0_4px_32px_rgba(0,0,0,0.18)] p-6 min-w-[320px] max-w-[900px] w-[90vw] min-h-[420px] border-4 border-[#e2dbc7] flex flex-col gap-5 max-[1100px]:max-w-[98vw] max-[1100px]:p-4 max-[600px]:w-[99vw] max-[600px]:p-2 my-4 max-sm:min-h-[auto]">
+        <div class="flex justify-between items-center mb-2 max-[600px]:flex-col max-[600px]:items-start max-[600px]:gap-2">
+            <span class="text-xl font-bold text-[#4a463b] tracking-wide max-sm:text-lg">EDIT PRODUCT</span>
+            <img src="/X.png" alt="Close" class="w-7 h-7 cursor-pointer hover:brightness-75 transition-filter max-sm:w-6 max-sm:h-6" on:click={() => showEditModal = false} />
+        </div>
+        <div class="flex gap-8 max-[1100px]:gap-4 max-[900px]:flex-col max-[900px]:gap-5 max-[600px]:gap-3">
+            <div class="flex-1 flex flex-col items-center gap-4 max-[900px]:w-full max-[900px]:items-stretch max-[600px]:gap-3">
+                <div class="relative w-[180px] h-[220px] bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.08)] flex items-center justify-center max-[900px]:w-[120px] max-[900px]:h-[140px] max-[600px]:w-[80px] max-[600px]:h-[90px]">
+                    <img class="w-[140px] h-[180px] object-contain max-[900px]:w-[90px] max-[900px]:h-[110px] max-[600px]:w-[60px] max-[600px]:h-[70px]" src={editProduct.image} alt="Product" />
+                    <span class="absolute top-2 left-2 bg-white rounded-full w-6 h-6 flex items-center justify-center text-xl text-[#b2a07a] border-2 border-[#e2dbc7] cursor-pointer max-sm:w-5 max-sm:h-5 max-sm:text-base" on:click={addImage}>+</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    {#each editProduct.variations as v}
+                        <img class="w-[38px] h-[38px] rounded-lg object-cover bg-white shadow-[0_1px_4px_rgba(0,0,0,0.07)] border-2 border-[#e2dbc7] max-[600px]:w-7 max-[600px]:h-7" src={v} alt="Variation" />
+                    {/each}
+                    <span class="w-7 h-7 rounded-full bg-white border-2 border-dashed border-[#b2a07a] text-[#b2a07a] flex items-center justify-center text-xl cursor-pointer max-[600px]:w-6 max-[600px]:h-6" on:click={addVariation}>+</span>
+                </div>
+                <div class="text-base font-medium text-[#7a6d53] mb-1 mt-3 max-[600px]:text-sm">Product Name</div>
+                <input class="w-full p-3 rounded-2xl border-2 border-[#e2dbc7] bg-[#f8f5ee] text-base text-[#4a463b] mb-2 max-[600px]:text-sm max-[600px]:p-2" bind:value={editProduct.name} />
+                <div class="text-base font-medium text-[#7a6d53] mb-1 max-[600px]:text-sm">Price</div>
+                <input class="w-full p-3 rounded-2xl border-2 border-[#e2dbc7] bg-[#f8f5ee] text-base text-[#4a463b] mb-2 max-[600px]:text-sm max-[600px]:p-2" bind:value={editProduct.price} />
+            </div>
+            <div class="flex-[1.3] flex flex-col gap-2 max-[900px]:w-full max-[900px]:items-stretch">
+                <div class="text-base font-medium text-[#7a6d53] mb-1 max-[600px]:text-sm">Detail</div>
+                <textarea class="w-full min-h-[60px] rounded-xl border-2 border-[#e2dbc7] bg-[#f8f5ee] text-base p-3 text-[#4a463b] mb-3 resize-none max-[600px]:text-sm max-[600px]:p-2" bind:value={editProduct.detail}></textarea>
+                <div class="text-base font-medium text-[#7a6d53] mb-1 flex items-center max-[600px]:text-sm">
+                    Category
+                    <span class="text-base text-[#b2a07a] ml-1 cursor-pointer max-[600px]:text-sm" on:click={() => addTag('categories')}>✎</span>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-2">
+                    {#each editProduct.categories as cat, i}
+                        <span class="bg-[#f3ead2] text-[#7a6d53] rounded-2xl px-3 py-1 text-[0.97rem] flex items-center gap-1 max-[600px]:text-sm">
+                            {cat}
+                            <span class="text-[1.1rem] text-[#b2a07a] cursor-pointer ml-1 max-[600px]:text-base" on:click={() => removeTag('categories', i)}>×</span>
+                        </span>
+                    {/each}
+                </div>
+                <div class="text-base font-medium text-[#7a6d53] mb-1 flex items-center max-[600px]:text-sm">
+                    Color
+                    <span class="text-base text-[#b2a07a] ml-1 cursor-pointer max-[600px]:text-sm" on:click={() => addTag('colors')}>+</span>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-2">
+                    {#each editProduct.colors as color, i}
+                        <span class="bg-[#f3ead2] text-[#7a6d53] rounded-2xl px-3 py-1 text-[0.97rem] flex items-center gap-1 max-[600px]:text-sm">
+                            {color}
+                            <span class="text-[1.1rem] text-[#b2a07a] cursor-pointer ml-1 max-[600px]:text-base" on:click={() => removeTag('colors', i)}>×</span>
+                        </span>
+                    {/each}
+                </div>
+                <div class="text-base font-medium text-[#7a6d53] mb-1 flex items-center max-[600px]:text-sm">
+                    Sizes
+                    <span class="text-base text-[#b2a07a] ml-1 cursor-pointer max-[600px]:text-sm" on:click={() => addTag('sizes')}>+</span>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-2">
+                    {#each editProduct.sizes as size, i}
+                        <span class="bg-[#f3ead2] text-[#7a6d53] rounded-2xl px-3 py-1 text-[0.97rem] flex items-center gap-1 max-[600px]:text-sm">
+                            {size}
+                            <span class="text-[1.1rem] text-[#b2a07a] cursor-pointer ml-1 max-[600px]:text-base" on:click={() => removeTag('sizes', i)}>×</span>
+                        </span>
+                    {/each}
+                </div>
+                <div class="text-base font-medium text-[#7a6d53] mb-1 max-[600px]:text-sm">Stock</div>
+                <input class="w-full p-3 rounded-2xl border-2 border-[#e2dbc7] bg-[#f8f5ee] text-base text-[#4a463b] mb-2 max-[600px]:text-sm max-[600px]:p-2" bind:value={editProduct.stock} />
+                <button class="mt-5 w-full h-12 bg-[#4a6d96] text-white rounded-3xl text-lg font-semibold shadow-[0_2px_8px_rgba(74,109,150,0.13)] hover:bg-[#39567a] transition-colors max-[900px]:h-10 max-[900px]:text-base max-[600px]:h-9 max-[600px]:text-sm" on:click={handleEdit}>UPDATE</button>
+            </div>
+        </div>
+    </div>
+</div>
+{/if}
 
-    }
-    .product-card:hover {
-        box-shadow: 0 4px 16px rgba(0,0,0,0.13);
-    }
-    .create-card {
-        justify-content: center;
-        align-items: center;
-        cursor: pointer;
-        border: 2px dashed #cfc6b0;
-        color: #b2a07a;
-        min-height: 270px;
-    }
-    .plus {
-        font-size: 2.5rem;
-        font-weight: 400;
-        margin-bottom: 0.5rem;
-    }
-    .create-label {
-        font-size: 1.1rem;
-        font-weight: 500;
-    }
-    .product-image {
-        width: 100%;
-        height: 32vh;
-        object-fit: cover;
-        border-radius: 6px;
-        margin-bottom: 0.7rem;
-    }
-    .product-info {
-        width: 100%;
-        margin-bottom: 0.5rem;
-    }
-    .product-name {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #222;
-        margin-bottom: 0.2rem;
-    }
-    .product-price {
-        font-size: 0.98rem;
-        color: #7a6d53;
-        margin-bottom: 0.2rem;
-    }
-    .product-rating {
-        color: #f5c518;
-        font-size: 1rem;
-    }
-    .product-actions {
-        position: absolute;
-        bottom: 1rem;
-        right: 1rem;
-        display: flex;
-        gap: 0.7rem;
-    }
-    .icon {
-        font-size: 1.15rem;
-        cursor: pointer;
-        opacity: 0.7;
-        transition: opacity 0.2s;
-    }
-    .icon:hover {
-        opacity: 1;
-    }
-    @media (max-width: 900px) {
-        .page-container {
-            flex-direction: column;
-            margin-left: 0;
-        }
-        .product-grid {
-            padding: 1rem;
-        }
-    }
-    .modal-overlay {
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.18);
-        z-index: 2000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .modal-box {
-        background: #fdf7ec;
-        border-radius: 22px;
-        box-shadow: 0 4px 32px rgba(0,0,0,0.18);
-        padding: 1.5rem 2rem 2rem 2rem;
-        min-width: 320px;
-        max-width: 900px;
-        width: 90vw;
-        min-height: 420px;
-        position: relative;
-        border: 3px solid #e2dbc7;
-        display: flex;
-        flex-direction: column;
-        gap: 1.2rem;
-    }
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.5rem;
-    }
-    .modal-title {
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: #4a463b;
-        letter-spacing: 1px;
-    }
-    .modal-close {
-        width: 28px;
-        height: 28px;
-        cursor: pointer;
-        transition: filter 0.2s;
-    }
-    .modal-close:hover {
-        filter: brightness(0.7);
-    }
-    .modal-content {
-        display: flex;
-        gap: 2rem;
-    }
-    .modal-left {
-        flex: 1.1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1.1rem;
-    }
-    .modal-image-wrap {
-        position: relative;
-        width: 180px;
-        height: 220px;
-        background: #fff;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .modal-image {
-        width: 140px;
-        height: 180px;
-        object-fit: contain;
-    }
-    .modal-image-add {
-        position: absolute;
-        top: 8px;
-        left: 8px;
-        background: #fff;
-        border-radius: 50%;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        color: #b2a07a;
-        border: 1.5px solid #e2dbc7;
-        cursor: pointer;
-    }
-    .modal-variation {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    .variation-thumb {
-        width: 38px;
-        height: 38px;
-        border-radius: 7px;
-        object-fit: cover;
-        background: #fff;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.07);
-        border: 1.5px solid #e2dbc7;
-    }
-    .variation-add {
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        background: #fff;
-        border: 1.5px dashed #b2a07a;
-        color: #b2a07a;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        cursor: pointer;
-    }
-    .modal-field-label {
-        font-size: 1rem;
-        font-weight: 500;
-        color: #7a6d53;
-        margin-bottom: 0.2rem;
-        margin-top: 0.7rem;
-    }
-    .modal-input {
-        width: 100%;
-        padding: 0.6rem 1rem;
-        border-radius: 18px;
-        border: 1.5px solid #e2dbc7;
-        background: #f8f5ee;
-        font-size: 1rem;
-        margin-bottom: 0.5rem;
-        color: #4a463b;
-    }
-    .modal-textarea {
-        width: 100%;
-        min-height: 60px;
-        border-radius: 14px;
-        border: 1.5px solid #e2dbc7;
-        background: #f8f5ee;
-        font-size: 1rem;
-        padding: 0.7rem 1rem;
-        color: #4a463b;
-        margin-bottom: 0.7rem;
-        resize: none;
-    }
-    .modal-right {
-        flex: 1.3;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    .modal-tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-bottom: 0.5rem;
-    }
-    .modal-tag {
-        background: #f3ead2;
-        color: #7a6d53;
-        border-radius: 16px;
-        padding: 0.3rem 0.9rem 0.3rem 0.9rem;
-        font-size: 0.97rem;
-        display: flex;
-        align-items: center;
-        gap: 0.3rem;
-    }
-    .tag-x {
-        font-size: 1.1rem;
-        color: #b2a07a;
-        cursor: pointer;
-        margin-left: 0.2rem;
-    }
-    .edit-icon {
-        font-size: 1rem;
-        color: #b2a07a;
-        margin-left: 0.3rem;
-        cursor: pointer;
-    }
-    .modal-add-btn {
-        margin-top: 1.2rem;
-        width: 100%;
-        height: 48px;
-        background: #4a6d96;
-        color: #fff;
-        border: none;
-        border-radius: 24px;
-        font-size: 1.15rem;
-        font-weight: 600;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(74,109,150,0.13);
-        transition: background 0.2s;
-    }
-    .modal-add-btn:hover {
-        background: #39567a;
-    }
-    @media (max-width: 1100px) {
-        .modal-box {
-            max-width: 98vw;
-            padding: 1rem 0.5rem;
-        }
-        .modal-content {
-            gap: 1rem;
-        }
-    }
-    @media (max-width: 900px) {
-        .modal-content {
-            flex-direction: column;
-            gap: 1.2rem;
-        }
-        .modal-left, .modal-right {
-            width: 100%;
-            align-items: stretch;
-        }
-        .modal-image-wrap {
-            width: 120px;
-            height: 140px;
-        }
-        .modal-image {
-            width: 90px;
-            height: 110px;
-        }
-        .modal-add-btn {
-            height: 40px;
-            font-size: 1rem;
-        }
-    }
-    @media (max-width: 600px) {
-        .modal-box {
-            min-width: unset;
-            width: 99vw;
-            padding: 0.5rem 0.2rem;
-        }
-        .modal-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.5rem;
-        }
-        .modal-title {
-            font-size: 1.1rem;
-        }
-        .modal-content {
-            flex-direction: column;
-            gap: 0.7rem;
-        }
-        .modal-left, .modal-right {
-            width: 100%;
-            align-items: stretch;
-        }
-        .modal-image-wrap {
-            width: 80px;
-            height: 90px;
-        }
-        .modal-image {
-            width: 60px;
-            height: 70px;
-        }
-        .modal-add-btn {
-            height: 36px;
-            font-size: 0.95rem;
-        }
-        .modal-field-label, .modal-tag {
-            font-size: 0.92rem;
-        }
-        .modal-input, .modal-textarea {
-            font-size: 0.95rem;
-            padding: 0.5rem 0.7rem;
-        }
-        .variation-thumb {
-            width: 28px;
-            height: 28px;
-        }
-    }
-</style>
+{#if showDeleteModal}
+<div class="fixed inset-0 bg-black/20 z-[2000] flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-[#fdf7ec] rounded-3xl shadow-[0_4px_32px_rgba(0,0,0,0.18)] p-6 min-w-[320px] max-w-[500px] w-[90vw] border-4 border-[#e2dbc7] flex flex-col gap-5 max-[1100px]:max-w-[98vw] max-[1100px]:p-4 max-[600px]:w-[99vw] max-[600px]:p-2 my-4">
+        <div class="flex justify-between items-center mb-2">
+            <span class="text-xl font-bold text-[#4a463b] tracking-wide max-sm:text-lg">DELETE PRODUCT</span>
+            <img src="/X.png" alt="Close" class="w-7 h-7 cursor-pointer hover:brightness-75 transition-filter max-sm:w-6 max-sm:h-6" on:click={() => { showDeleteModal = false; productToDelete = null; }} />
+        </div>
+        <div class="flex flex-col items-center py-4">
+            <div class="w-32 h-32 mb-4 rounded-xl overflow-hidden bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] max-sm:w-24 max-sm:h-24">
+                <img 
+                    src={productToDelete?.image} 
+                    alt={productToDelete?.name} 
+                    class="w-full h-full object-cover"
+                />
+            </div>
+            <p class="text-[#4a463b] text-lg mb-2 max-sm:text-base">Are you sure you want to delete</p>
+            <p class="text-[#7a6d53] font-medium text-xl max-sm:text-lg">{productToDelete?.name}?</p>
+            <p class="text-[#7a6d53] mt-1 max-sm:text-sm">{productToDelete?.price}</p>
+        </div>
+        <div class="flex gap-4 mt-2">
+            <button 
+                class="flex-1 h-12 bg-gray-200 text-[#4a463b] rounded-3xl text-lg font-semibold hover:bg-gray-300 transition-colors max-[600px]:h-9 max-[600px]:text-sm" 
+                on:click={() => { showDeleteModal = false; productToDelete = null; }}
+            >
+                CANCEL
+            </button>
+            <button 
+                class="flex-1 h-12 bg-red-500 text-white rounded-3xl text-lg font-semibold hover:bg-red-600 transition-colors max-[600px]:h-9 max-[600px]:text-sm" 
+                on:click={handleDelete}
+            >
+                DELETE
+            </button>
+        </div>
+    </div>
+</div>
+{/if}

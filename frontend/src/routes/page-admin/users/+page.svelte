@@ -10,8 +10,47 @@
     let sortBy = 'User ID';
     let showPerPage = '5';
 
+    // Dummy data for testing
+    const dummyUsers: User[] = [
+        {
+            id: 1,
+            name: 'John Doe',
+            role: 'admin',
+            created_at: '2024-01-15T10:30:00Z',
+            email: 'john@example.com'
+        },
+        {
+            id: 2,
+            name: 'Jane Smith',
+            role: 'seller',
+            created_at: '2024-02-20T14:45:00Z',
+            email: 'jane@example.com'
+        },
+        {
+            id: 3,
+            name: 'Mike Johnson',
+            role: 'customer',
+            created_at: '2024-03-01T09:15:00Z',
+            email: 'mike@example.com'
+        },
+        {
+            id: 4,
+            name: 'Sarah Wilson',
+            role: 'seller',
+            created_at: '2024-03-10T16:20:00Z',
+            email: 'sarah@example.com'
+        },
+        {
+            id: 5,
+            name: 'David Brown',
+            role: 'customer',
+            created_at: '2024-03-15T11:00:00Z',
+            email: 'david@example.com'
+        }
+    ];
+
     // Store reactive variables using runes syntax
-    const users = $derived($usersStore.users);
+    const users = $derived($usersStore.users.length > 0 ? $usersStore.users : dummyUsers);
     const loading = $derived($usersStore.loading);
     const error = $derived($usersStore.error);
     
@@ -89,7 +128,7 @@
 
 <div class="min-h-screen bg-[#F5ECD5] pt-[1px]">
     <Header />
-    <main class="flex-1 ml-[20px] p-6 max-w-[calc(100vw-200px)]">
+    <main class="flex-1 p-6 max-w-[calc(100vw-200px)]">
         <div class="max-w-7xl mx-auto">
             <!-- Search Section -->
             <div class="mb-6 bg-transparent p-6 max-w-3xl">
