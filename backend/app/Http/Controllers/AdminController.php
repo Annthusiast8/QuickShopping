@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class AdminController extends Controller
 {
@@ -103,5 +104,59 @@ class AdminController extends Controller
             Log::error('Failed to delete user: ' . $e->getMessage());
             return response()->json(['message' => 'Failed to delete user'], 500);
         }
+    }
+    
+    /**
+     * Get all business profiles pending approval
+     */
+    public function getPendingBusinesses()
+    {
+        $businesses = Shop::where('is_approved', false)
+            ->with('user')
+            ->orderBy('created_at', 'asc')
+            ->paginate(10);
+            
+        return response()->json($businesses);
+    }
+    
+    /**
+     * Approve a business
+     */
+    public function approveBusinessProfile($shopId)
+    {
+        $shop = Shop::findOrFail($shopId);
+        
+        $shop->is_approved = true;
+        $shop->is_active = true;
+        $shop->approval_date = now();
+        $shop->approved_by = Auth::id();
+        $shop->save();
+        
+        return response()->json([
+            'message' => 'Business profile approved successfully',
+            'shop' => $shop->load('user')
+        ]);
+    }
+    
+    /**
+     * Reject a business
+     */
+    public function rejectBusinessProfile(Request $request, $shopId)
+    {
+        $request->validate([
+            'rejection_reason' => 'required|string'
+        ]);
+        
+        $shop = Shop::findOrFail($shopId);
+        
+        $shop->is_approved = false;
+        $shop->is_active = false;
+        $shop->rejection_reason = $request->rejection_reason;
+        $shop->save();
+        
+        return response()->json([
+            'message' => 'Business profile rejected',
+            'shop' => $shop->load('user')
+        ]);
     }
 }

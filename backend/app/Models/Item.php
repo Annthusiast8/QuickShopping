@@ -15,10 +15,17 @@ class Item extends Model
         'image',
         'seller_id',
         'stock',
-        'status'
+        'status',
+        'category',
+        'variations'
     ];
 
     protected $appends = ['average_rating'];
+
+    protected $casts = [
+        'variations' => 'array',
+        'price' => 'float'
+    ];
 
     public function seller()
     {
@@ -49,5 +56,34 @@ class Item extends Model
     {
         return $query->withAvg('reviews', 'rating')
                     ->orderByDesc('reviews_avg_rating');
+    }
+
+    public function variations()
+    {
+        return $this->hasMany(ProductVariation::class);
+    }
+
+    public function scopeByCategory($query, $category)
+    {
+        return $query->where('category', $category);
+    }
+
+    public function scopeByPriceRange($query, $min, $max)
+    {
+        return $query->whereBetween('price', [$min, $max]);
+    }
+
+    public function scopeSearch($query, $search)
+    {
+        return $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+    }
+
+    /**
+     * Get all reports for this item
+     */
+    public function reports()
+    {
+        return $this->hasMany(ItemReport::class);
     }
 }

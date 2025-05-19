@@ -1,0 +1,39 @@
+As a customer I want to login securely
+As a seller I want to login securely
+As an admin I want to login securely
+
+As a customer, I want to register an account to browse the items 
+As a seller, I want to register an account to be able to sell
+As an admin, I want to manage user accounts. 
+
+As a customer, I should have the ability to logout of my account
+As a seller, I should have the ability to logout of my account
+As an admin, I should have the ability to logout of my account
+
+As a customer, I want to update my profile
+As a customer, I want the ability to delete my account.
+As an admin, I want to approve businesses before they operate.
+
+As a customer, I want to browse items currently for sale.
+As a customer, I want to see detailed item information.
+As a customer, I want to filter items by category.
+
+As a customer, I want to filter items (New/Top Rated).
+As a seller, I want to create items to sell. 
+As a seller, I want to view my listed items.
+
+As a customer, I want to add item/s to my cart
+As a customer, I want to remove items from my cart. 
+As a customer, I want to make orders.
+
+As a customer, I want to know if my order is approved. 
+As a seller, I want to browse orders for my items.
+As a customer, I want to leave reviews on an item.
+
+As a seller, I want to delete items I’m selling.
+As a seller, I want to update items I’m selling. 
+As a seller, I want to check if my item is delivered.
+
+As a customer, I want to report suspicious items.
+As an admin, I want to remove reported items. 
+As an admin, I want to manage user accounts. (final refinement)

@@ -15,11 +15,16 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('name');
-            $table->string('description')->nullable();
+            $table->text('description')->nullable();
             $table->string('logo_url')->nullable();
+            $table->string('contact_email')->nullable();
+            $table->string('contact_phone')->nullable();
             $table->string('address')->nullable();
-            $table->string('phone')->nullable();
-            $table->boolean('is_active')->default(true);
+            $table->boolean('is_active')->default(false);
+            $table->boolean('is_approved')->default(false);
+            $table->timestamp('approval_date')->nullable();
+            $table->foreignId('approved_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->text('rejection_reason')->nullable();
             $table->timestamps();
         });
     }

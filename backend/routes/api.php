@@ -15,6 +15,10 @@ use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\AccountController;
 
 //Admin Routes -> http://127.0.0.1:8000/api/admin
 Route::prefix('admin')
@@ -24,6 +28,15 @@ Route::prefix('admin')
         Route::get('/users', 'getUsers');
         Route::put('/users/{userId}/role', 'updateUserRole');
         Route::delete('/users/{userId}', 'deleteUser');
+        
+        // Business approval
+        Route::get('/businesses/pending', 'getPendingBusinesses');
+        Route::put('/businesses/{shopId}/approve', 'approveBusinessProfile');
+        Route::put('/businesses/{shopId}/reject', 'rejectBusinessProfile');
+        
+        // Report management
+        Route::get('/reports', [ReportController::class, 'getAllReports']);
+        Route::put('/reports/{reportId}/review', [ReportController::class, 'reviewReport']);
     });
 
 
@@ -32,7 +45,24 @@ Route::prefix('seller')
     ->middleware(['auth:sanctum', RoleMiddleware::class.':seller'])
     ->controller(SellerController::class)
     ->group(function () {
+        // Business profile management
+        Route::get('/profile', 'getProfile');
+        Route::post('/profile', 'updateProfile');
         
+        // Product management
+        Route::get('/products', 'getProducts');
+        Route::post('/products/add', 'addProduct');
+        Route::post('/products/update/{id}', 'updateProduct');
+        Route::delete('/products/delete/{id}', 'deleteProduct');
+        
+        // Product variations
+        Route::post('/products/{id}/variations', 'addProductVariation');
+        Route::put('/products/{id}/variations/{variationId}', 'updateProductVariation');
+        Route::delete('/products/{id}/variations/{variationId}', 'deleteProductVariation');
+        
+        // Order management
+        Route::get('/orders', 'getOrders');
+        Route::put('/orders/{id}/status', 'updateOrderStatus');
     });
 
 // Customer Routes
@@ -40,7 +70,19 @@ Route::prefix('customer')
     ->middleware(['auth:sanctum', RoleMiddleware::class.':customer'])
     ->controller(CustomerController::class)
     ->group(function () {
+        // Profile management
+        Route::get('/profile', 'getProfile');
+        Route::post('/profile', 'updateProfile');
         
+        // Address management
+        Route::get('/addresses', 'getAddresses');
+        Route::post('/addresses', 'addAddress');
+        Route::put('/addresses/{id}', 'updateAddress');
+        Route::delete('/addresses/{id}', 'deleteAddress');
+        
+        // Order history
+        Route::get('/orders', 'getOrders');
+        Route::get('/orders/{id}', 'getOrder');
     });
 
 
@@ -73,6 +115,7 @@ Route::prefix('/health')->group(function (){
 // Public routes
 Route::get('/items', [ItemController::class, 'index']);
 Route::get('/items/{id}', [ItemController::class, 'show']);
+Route::get('/products', [ItemController::class, 'index']); // Alias for frontend compatibility
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -93,4 +136,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/items/{itemId}/orders', [OrderController::class, 'store']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);
     Route::put('/orders/{id}/status', [OrderController::class, 'updateStatus']);
+    
+    // Cart routes
+    Route::get('/cart', [CartController::class, 'getCart']);
+    Route::post('/cart/add', [CartController::class, 'addToCart']);
+    Route::put('/cart/update/{itemId}', [CartController::class, 'updateCartItem']);
+    Route::delete('/cart/remove/{itemId}', [CartController::class, 'removeFromCart']);
+    Route::post('/cart/checkout', [CartController::class, 'checkout']);
+    
+    // Profile routes (general)
+    Route::get('/profile', [ProfileController::class, 'getProfile']);
+    Route::put('/profile', [ProfileController::class, 'updateProfile']);
+
+    // Account deletion
+    Route::post('/account/delete', [AccountController::class, 'deleteAccount']);
+    
+    // Item reporting
+    Route::post('/items/{itemId}/report', [ReportController::class, 'reportItem']);
 });

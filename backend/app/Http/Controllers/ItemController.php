@@ -13,13 +13,68 @@ class ItemController extends Controller
     {
         $query = Item::query();
 
+        // Basic filters
         if ($request->filter === 'new') {
             $query->newItems();
         } elseif ($request->filter === 'top_rated') {
             $query->topRated();
         }
+        
+        // Category filter
+        if ($request->has('category') && $request->category) {
+            $query->byCategory($request->category);
+        }
+        
+        // Price range filter
+        if ($request->has('min_price') && $request->has('max_price')) {
+            $query->byPriceRange($request->min_price, $request->max_price);
+        }
+        
+        // Search by name or description
+        if ($request->has('search') && $request->search) {
+            $query->search($request->search);
+        }
+        
+        // Sort options
+        if ($request->has('sort_by')) {
+            switch ($request->sort_by) {
+                case 'price_asc':
+                    $query->orderBy('price', 'asc');
+                    break;
+                case 'price_desc':
+                    $query->orderBy('price', 'desc');
+                    break;
+                case 'name_asc':
+                    $query->orderBy('name', 'asc');
+                    break;
+                case 'name_desc':
+                    $query->orderBy('name', 'desc');
+                    break;
+                case 'date_asc':
+                    $query->orderBy('created_at', 'asc');
+                    break;
+                case 'date_desc':
+                    $query->orderBy('created_at', 'desc');
+                    break;
+                case 'rating':
+                    $query->withAvg('reviews', 'rating')
+                          ->orderByDesc('reviews_avg_rating');
+                    break;
+            }
+        } else {
+            // Default sort by newest
+            $query->orderBy('created_at', 'desc');
+        }
+        
+        // Only active items
+        $query->where('status', 'active');
 
-        return $query->with('seller')->paginate(12);
+        // Include relationships
+        $query->with('seller');
+        
+        // Paginate results
+        $perPage = $request->per_page ?? 12;
+        return $query->paginate($perPage);
     }
 
     public function store(Request $request)

@@ -12,9 +12,15 @@ class Order extends Model
         'item_id',
         'quantity',
         'total_price',
-        'status', // pending, approved, rejected, completed
         'shipping_address',
-        'payment_status'
+        'variation',
+        'status',
+        'payment_status',
+        'payment_method'
+    ];
+
+    protected $casts = [
+        'variation' => 'array'
     ];
 
     public function user()
