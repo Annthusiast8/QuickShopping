@@ -20,6 +20,8 @@
     
     // Load admin data when component mounts
     admin.loadUsers();
+    admin.loadPendingBusinesses();
+    admin.loadReports();
   });
   
   // Clean up when component is destroyed
@@ -37,8 +39,9 @@
   const navItems = [
     { name: 'Dashboard', icon: '/Dashboard%20Layout.png', href: '/page-admin/dashboard' },
     { name: 'Users', icon: '/Users.png', href: '/page-admin/users' },
-    { name: 'Business', icon: '/Business.png', href: '/page-admin/orders' },
-    { name: 'Reported Items', icon: '/cart.png', href: '/page-admin/products' },
+    { name: 'Business Approvals', icon: '/Business.png', href: '/page-admin/business' },
+    { name: 'Orders', icon: '/cart.png', href: '/page-admin/orders' },
+    { name: 'Reported Items', icon: '/report.png', href: '/page-admin/products' },
     { name: 'Reports', icon: '/reports.png', href: '/page-admin/reports' }
   ];
 
