@@ -40,24 +40,7 @@
     { name: 'Dashboard', icon: '/Dashboard%20Layout.png', href: '/page-admin/dashboard' },
     { name: 'Users', icon: '/Users.png', href: '/page-admin/users' },
     { name: 'Business Approvals', icon: '/Business.png', href: '/page-admin/business' },
-    { name: 'Orders', icon: '/cart.png', href: '/page-admin/orders' },
-    { name: 'Reported Items', icon: '/report.png', href: '/page-admin/products' },
-    { name: 'Reports', icon: '/reports.png', href: '/page-admin/reports' }
-  ];
-
-  // Stats will be updated from the admin store
-  $: stats = [
-    { name: 'Total Users', value: $admin.users.length.toString(), icon: '/users.svg' },
-    { name: 'Pending Businesses', value: $admin.pendingBusinesses.length.toString(), icon: '/business.svg' },
-    { name: 'Reports', value: $admin.reports.length.toString(), icon: '/reports.svg' },
-    { name: 'Total Visitors', value: '8,742', icon: '/visitors.svg' }
-  ];
-
-  // You can keep your latest orders logic here
-  let latestOrders = [
-    { id: '1231', product: 'Prada Veloce X1 Sunglasses', img: '/sunglasses.png', date: '03.15.2025 - 07:12 AM', customer: 'Zhang Ruonan', total: '$1,355' },
-    { id: '1232', product: 'Prada Veloce X1 Sunglasses', img: '/sunglasses.png', date: '03.10.2025 - 06:29 PM', customer: 'Wang Yibo', total: '$1,355' },
-    { id: '1233', product: 'Prada Veloce X1 Sunglasses', img: '/sunglasses.png', date: '03.17.2025 - 12:38 AM', customer: 'Bai Lu', total: '$1,355' }
+    { name: 'Reported Items', icon: '/reports.png', href: '/page-admin/reports' }
   ];
 </script>
 
