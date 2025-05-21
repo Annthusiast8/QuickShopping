@@ -1,8 +1,31 @@
 <script lang="ts">
-  import { cartStore, type CartItem } from '$lib/stores/cart';
+  import { cart } from '$lib/stores/cart';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import Alerts from '$lib/components/Alerts.svelte';
+  
+  // Define CartItem interface
+  interface CartItem {
+    id: number;
+    product: {
+      id: number;
+      seller_id: number;
+      name: string;
+      description?: string;
+      price: number;
+      stock: number;
+      image_url?: string;
+      category?: string;
+      rating?: number;
+      review_count?: number;
+    };
+    quantity: number;
+    variation: {
+      color?: string;
+      size?: string;
+    };
+    selected: boolean;
+  }
 
   // State for delete confirmation modal
   let showDeleteConfirmModal = false;
@@ -25,18 +48,30 @@
   // Group items by seller
   // Search functionality
   let searchQuery = '';
+  let cartItems: CartItem[] = [];
+  let loading = false;
+  
+  // Update cart items when the store changes
+  $: {
+    cartItems = $cart.items.map(item => ({
+      ...item,
+      selected: item.selected || false // Ensure selected property exists
+    }));
+    loading = $cart.loading;
+  }
+  
+  // Filter items based on search query
   $: visibleItems = searchQuery.trim() 
-    ? $cartStore.items.filter(item => 
+    ? cartItems.filter(item => 
         item.product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.product.description?.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : $cartStore.items;
+    : cartItems;
   
   $: itemsBySeller = groupItemsBySeller(visibleItems);
-  $: anyItemSelected = $cartStore.items.some(item => item.selected);
-  $: allItemsSelected = $cartStore.items.length > 0 && 
-    $cartStore.items.every(item => item.selected);
-  $: selectedItems = $cartStore.items.filter(item => item.selected);
+  $: anyItemSelected = cartItems.some(item => item.selected);
+  $: allItemsSelected = cartItems.length > 0 && cartItems.every(item => item.selected);
+  $: selectedItems = cartItems.filter(item => item.selected);
   $: totalSelectedPrice = calculateTotalSelectedPrice(selectedItems);
   
   // Format price to currency
@@ -103,14 +138,19 @@
   }
 
   // Handle quantity change
-  function updateQuantity(item: CartItem, newQuantity: number) {
+  async function updateQuantity(item: CartItem, newQuantity: number) {
     if (newQuantity > 0 && newQuantity <= item.product.stock) {
-      cartStore.updateQuantity(
-        item.product.id, 
-        item.variation.color, 
-        item.variation.size, 
-        newQuantity
-      );
+      try {
+        await cart.updateCartItem(item.product.id, {
+          quantity: newQuantity,
+          variation: {
+            color: item.variation.color,
+            size: item.variation.size
+          }
+        });
+      } catch (error) {
+        console.error('Failed to update quantity:', error);
+      }
     }
   }
 
@@ -121,13 +161,19 @@
   }
   
   // Actually remove the item after confirmation
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (itemToDelete) {
-      cartStore.removeItem(
-        itemToDelete.product.id, 
-        itemToDelete.variation.color, 
-        itemToDelete.variation.size
-      );
+      try {
+        await cart.removeFromCart(
+          itemToDelete.product.id, 
+          {
+            color: itemToDelete.variation.color, 
+            size: itemToDelete.variation.size
+          }
+        );
+      } catch (error) {
+        console.error('Failed to remove item:', error);
+      }
     }
     showDeleteConfirmModal = false;
     itemToDelete = null;
@@ -135,21 +181,34 @@
 
   // Handle item selection toggle
   function toggleItemSelection(item: CartItem) {
-    cartStore.toggleSelection(
-      item.product.id, 
-      item.variation.color, 
-      item.variation.size
+    // Update local state since the cart store doesn't handle selection
+    const index = cartItems.findIndex(i => 
+      i.product.id === item.product.id && 
+      i.variation.color === item.variation.color && 
+      i.variation.size === item.variation.size
     );
+    
+    if (index !== -1) {
+      cartItems[index].selected = !cartItems[index].selected;
+      cartItems = [...cartItems]; // Force reactivity
+    }
   }
 
   // Handle seller group selection toggle
   function toggleSellerSelection(sellerId: number, selected: boolean) {
-    cartStore.toggleSellerSelection(sellerId, selected);
+    // Update all items from this seller
+    cartItems = cartItems.map(item => {
+      if (item.product.seller_id === sellerId) {
+        return { ...item, selected };
+      }
+      return item;
+    });
   }
 
   // Handle all items selection toggle
   function toggleAllSelection() {
-    cartStore.toggleAllSelection(!allItemsSelected);
+    const newSelectedState = !allItemsSelected;
+    cartItems = cartItems.map(item => ({ ...item, selected: newSelectedState }));
   }
 
   // Handle continue shopping
@@ -168,47 +227,61 @@
   }
 
   onMount(() => {
-    // Add some mock data if cart is empty (for demonstration)
-    if ($cartStore.items.length === 0) {
-      const mockProduct = {
-        id: 101,
-        seller_id: 6,
-        name: "Prada Veloce X1 Sunglasses",
-        description: "Luxury sunglasses with UV protection",
-        price: 1250,
-        stock: 10,
-        image_url: "/images/sunglasses.jpg", // Replace with actual image path
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: null,
-        rating: 4.8,
-        review_count: 120,
-        category: "Accessories",
-        variations: {
-          sizes: ["Standard"],
-          sizeType: "standard" as 'standard' | 'numeric',
-          colors: ["Black", "Brown", "Gold"]
+    // Load cart data
+    const loadCartData = async () => {
+      try {
+        // Load cart items from the API
+        await cart.loadCart();
+        
+        // If cart is empty and we're in development, add a sample item
+        if (cartItems.length === 0 && window.location.hostname === 'localhost') {
+          const mockProduct = {
+            id: 101,
+            seller_id: 6,
+            name: "Prada Veloce X1 Sunglasses",
+            description: "Luxury sunglasses with UV protection",
+            price: 1250,
+            stock: 10,
+            image_url: "/images/sunglasses.jpg", // Replace with actual image path
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: null,
+            rating: 4.8,
+            review_count: 120,
+            category: "Accessories"
+          };
+          
+          // Add sample item to cart using the cart store
+          await cart.addToCart({
+            item_id: mockProduct.id,
+            quantity: 1,
+            variation: {
+              color: "Black",
+              size: "Standard"
+            }
+          });
+          
+          // After adding, reload the cart to get the updated items
+          await cart.loadCart();
         }
-      };
-      
-      cartStore.addItem({
-        product: mockProduct,
-        quantity: 1,
-        variation: {
-          color: "Black",
-          size: "Standard"
-        },
-        selected: true
-      });
-    }
+      } catch (error) {
+        console.error('Failed to load cart:', error);
+      }
+    };
+    
+    // Start loading cart data
+    loadCartData();
     
     // Listen for search events from the layout
-    window.addEventListener('searchCart', ((event: CustomEvent) => {
+    const searchHandler = ((event: CustomEvent) => {
       searchQuery = event.detail.query;
-    }) as EventListener);
+    }) as EventListener;
     
+    window.addEventListener('searchCart', searchHandler);
+    
+    // Return cleanup function
     return () => {
-      window.removeEventListener('searchCart', ((event: CustomEvent) => {}) as EventListener);
+      window.removeEventListener('searchCart', searchHandler);
     };
   });
 </script>
@@ -216,10 +289,14 @@
 <div class="container mx-auto px-4 py-8 max-w-6xl">
   <h1 class="text-2xl font-bold mb-6">Shopping Cart</h1>
 
-  {#if $cartStore.items.length === 0}
+  {#if loading}
+    <div class="bg-white rounded-lg shadow p-8 text-center">
+      <p class="text-gray-600 mb-4">Loading your cart...</p>
+    </div>
+  {:else if cartItems.length === 0}
     <div class="bg-white rounded-lg shadow p-8 text-center">
       <p class="text-gray-600 mb-4">Your cart is empty</p>
-      <a href="/page-customer/home" class="px-4 py-2 bg-[#21463E] text-white rounded-md hover:bg-[#143129]">
+      <a href="/page-customer/shop" class="px-4 py-2 bg-[#21463E] text-white rounded-md hover:bg-[#143129]">
         Continue Shopping
       </a>
     </div>

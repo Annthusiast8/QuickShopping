@@ -1,10 +1,32 @@
 <script lang="ts">
-  import type { Product } from '$lib/stores/products';
   import ProductModal from './ProductModal.svelte';
   import AddToCartModal from './AddToCartModal.svelte';
   import AddToCartSuccess from './Alerts.svelte';
   import { onMount } from 'svelte';
-  import { cartStore } from '$lib/stores/cart';
+  import { cart } from '$lib/stores/cart';
+  
+  // Define Product interface inline
+  interface Product {
+    id: number;
+    seller_id?: number;
+    name: string;
+    description?: string;
+    price: number;
+    stock?: number;
+    image_url?: string;
+    is_active?: boolean;
+    created_at?: string;
+    updated_at?: string | null;
+    rating?: number;
+    review_count?: number;
+    category?: string;
+    variations?: {
+      sizes?: any[];
+      sizeType?: string;
+      sizeUnit?: string;
+      colors?: string[];
+    };
+  }
 
   export let product: Product;
   export let onAddToCart: (product: Product) => void;
@@ -26,9 +48,15 @@
 
   onMount(() => {
     // Use mock data instead of API call
-    const mockProfile = mockBusinessProfiles[product.seller_id.toString()];
-    if (mockProfile) {
-      sellerName = mockProfile.business_name;
+    // Handle case where seller_id might be undefined
+    if (product.seller_id) {
+      const mockProfile = mockBusinessProfiles[product.seller_id.toString()];
+      if (mockProfile) {
+        sellerName = mockProfile.business_name;
+      }
+    } else {
+      // Default seller name if seller_id is missing
+      sellerName = 'QuickShopping Marketplace';
     }
   });
 
@@ -60,11 +88,10 @@
     const cartData = event.detail;
     
     // Add to cart using cart store
-    cartStore.addItem({
-      product: cartData.product,
-      quantity: cartData.quantity,
-      variation: cartData.variation,
-      selected: true
+    cart.addToCart({
+      item_id: cartData.product.id,
+      quantity: cartData.quantity || 1,
+      variation: cartData.variation
     });
     
     // Still call the parent component's handler if needed
@@ -83,7 +110,8 @@
   }
 
   // Calculate buyers count based on product ID for consistency
-  const buyersCount = (product.id * 123) % 1000 + 50; // Using product ID to ensure consistent values
+  // Handle case where product ID might be undefined
+  const buyersCount = product.id ? (product.id * 123) % 1000 + 50 : 50; // Using product ID to ensure consistent values
 </script>
 
 <div 

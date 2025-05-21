@@ -37,7 +37,7 @@
 
   // Navigation items
   const navItems = [
-    { label: 'Shop', href: '/page-customer/home', icon: 'shopping-bag' },
+    { label: 'Shop', href: '/page-customer/shop', icon: 'shopping-bag' },
     { label: 'Cart', href: '/page-customer/cart', icon: 'shopping-cart' },
     { label: 'Profile', href: '/page-customer/profile', icon: 'user' },
     { label: 'My Purchases', href: '/page-customer/profile/my-purchases', icon: 'receipt' }
@@ -90,7 +90,7 @@
       const currentPath = $page.url.pathname;
       
       // If we're already on the home page, dispatch searchProducts event
-      if (currentPath.includes('/page-customer/home')) {
+      if (currentPath.includes('/page-customer/shop')) {
         window.dispatchEvent(new CustomEvent('searchProducts', {
           detail: { query: searchQuery.trim() }
         }));
@@ -126,7 +126,7 @@
       
       // Only trigger search if we're on a searchable page and have query text
       if (searchQuery.trim()) {
-        if (currentPath.includes('/page-customer/home')) {
+        if (currentPath.includes('/page-customer/shop')) {
           window.dispatchEvent(new CustomEvent('searchProducts', {
             detail: { query: searchQuery.trim() }
           }));
@@ -141,7 +141,7 @@
         }
       } else {
         // If search is cleared, reset the search
-        if (currentPath.includes('/page-customer/home')) {
+        if (currentPath.includes('/page-customer/shop')) {
           window.dispatchEvent(new CustomEvent('searchProducts', {
             detail: { query: '' }
           }));
@@ -211,7 +211,7 @@
     <div class="h-full flex flex-col">
       <!-- Logo -->
       <div class="p-4 border-b">
-        <a href="/page-customer/home" class="flex items-center">
+        <a href="/page-customer/shop" class="flex items-center">
           <h1 class="text-xl font-bold text-gray-800">
             Quick<span class="text-yellow-500">Shopping</span>
           </h1>
@@ -295,7 +295,7 @@
       </button>
       
       <!-- Logo -->
-      <a href="/page-customer/home" class="flex items-center">
+      <a href="/page-customer/shop" class="flex items-center">
         <h1 class="text-lg font-bold text-gray-800">
           Quick<span class="text-yellow-500">Shopping</span>
         </h1>

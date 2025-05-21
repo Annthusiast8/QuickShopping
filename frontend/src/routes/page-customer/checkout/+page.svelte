@@ -1,10 +1,38 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
-    import { cartStore, type CartItem } from '$lib/stores/cart';
+    import { cart } from '$lib/stores/cart';
+    import { orders } from '$lib/stores/orders';
+    import { profile } from '$lib/stores/profile';
+    import { auth } from '$lib/stores/auth';
+    import Alerts from '$lib/components/Alerts.svelte';
     
-    // Mock types and data instead of importing from userStore
+    // Define CartItem interface
+    interface CartItem {
+        id: number;
+        product: {
+            id: number;
+            seller_id: number;
+            name: string;
+            description?: string;
+            price: number;
+            stock: number;
+            image_url?: string;
+            category?: string;
+            rating?: number;
+            review_count?: number;
+        };
+        quantity: number;
+        variation: {
+            color?: string;
+            size?: string;
+        };
+        selected: boolean;
+    }
+    
+    // Define Address interface
     interface Address {
+        id?: number;
         name: string;
         phoneNumber: string;
         street: string;
@@ -14,78 +42,7 @@
         isDefault: boolean;
     }
     
-    let selectedItems: CartItem[] = [];
-    let shippingAddress: Address | null = null;
-    let paymentMethod: 'cash' | 'ewallet' = 'cash';
-    let shippingFee = 105;
-    
-    // Mockup data using profile information
-    const mockUserData = {
-        addresses: [
-            {
-                name: "Katherine Peterson",
-                phoneNumber: "+1 (555) 123-4567",
-                street: "123 Maple Street, Apt 4B",
-                village: "Brooklyn",
-                city: "NY",
-                zipCode: "11201",
-                isDefault: true
-            }
-        ]
-    };
-    
-    // Mock cart items using the Prada sunglasses from cart page
-    const mockCartItems: CartItem[] = [
-        {
-            product: {
-                id: 101,
-                seller_id: 6,
-                name: "Prada Veloce X1 Sunglasses",
-                description: "Luxury sunglasses with UV protection",
-                price: 1250,
-                stock: 10,
-                image_url: "/images/sunglasses.jpg", 
-                is_active: true,
-                created_at: new Date().toISOString(),
-                updated_at: null,
-                rating: 4.8,
-                review_count: 120,
-                category: "Accessories",
-                variations: {
-                    sizes: ["Standard"],
-                    sizeType: "standard" as 'standard' | 'numeric',
-                    colors: ["Black", "Brown", "Gold"]
-                }
-            },
-            quantity: 1,
-            variation: {
-                color: "Black",
-                size: "Standard"
-            },
-            selected: true
-        }
-    ];
-    
-    // Get seller name function from cart page
-    function getSellerName(sellerId: number): string {
-        const mockBusinessProfiles: Record<string, string> = {
-            '1': 'Fresh Produce Co.',
-            '2': 'Organic Delights',
-            '3': 'Farm Fresh Market',
-            '4': 'Local Harvest',
-            '5': 'Green Grocer',
-            '6': 'Prada Official Store'
-        };
-        
-        return mockBusinessProfiles[sellerId.toString()] || `Seller ${sellerId}`;
-    }
-    
-    // Function to generate a random order ID
-    function generateOrderId(): string {
-        return Math.floor(1000 + Math.random() * 9000).toString();
-    }
-    
-    // Interface for order items
+    // Define the OrderItem type
     interface OrderItem {
         id: string;
         item: {
@@ -95,80 +52,173 @@
         };
         quantity: number;
         total_price: number;
-        status: 'pending' | 'to_ship' | 'to_receive' | 'completed';
+        status: 'pending' | 'shipped' | 'delivered' | 'cancelled';
         date: string;
         seller: string;
+    }
+    
+    let selectedItems: CartItem[] = [];
+    let addresses: Address[] = [];
+    let shippingAddress: Address | null = null;
+    let paymentMethod: 'cash' | 'ewallet' = 'cash';
+    let shippingFee = 105; // Fixed shipping fee
+    let isProcessing = false;
+    let error: string | null = null;
+    let showSuccessAlert = false;
+    let showErrorAlert = false;
+    let errorMessage = '';
+    
+    // Store reactive variables
+    $: cartItems = $cart.items.map(item => ({
+        ...item,
+        selected: item.selected || false // Ensure selected property exists
+    }));
+    $: profileAddresses = $profile.addresses || [];
+    $: cartLoading = $cart.loading;
+    $: profileLoading = $profile.loading;
+    $: ordersLoading = $orders.loading;
+    $: loading = cartLoading || profileLoading || ordersLoading || isProcessing;
+    
+    // Function to generate a random order ID
+    function generateOrderId(): string {
+        return Math.random().toString(36).substring(2, 12);
+    }
+    
+    // Get seller name function - would be replaced with API call in production
+    function getSellerName(sellerId: number): string {
+        // This would be replaced with actual data from a business/seller store
+        const businessProfiles: Record<string, string> = {
+            '1': 'Fresh Produce Co.',
+            '2': 'Organic Delights',
+            '3': 'Farm Fresh Market',
+            '4': 'Local Harvest',
+            '5': 'Green Grocer',
+            '6': 'Prada Official Store'
+        };
+        
+        return businessProfiles[sellerId.toString()] || `Seller ${sellerId}`;
     }
     
     // Array to track orders - in a real app, this would be handled by a store or API
     let pendingOrders: OrderItem[] = [];
     
+    async function loadData() {
+        try {
+            // Load cart items if not already loaded
+            if ($cart.items.length === 0) {
+                await cart.loadCart();
+            }
+            
+            // Load profile addresses if not already loaded
+            if ($profile.addresses.length === 0) {
+                await profile.loadAddresses();
+            }
+            
+            // Get selected items from the cart store
+            selectedItems = $cart.items.filter((item: CartItem) => item.selected);
+            
+            // If no items are selected, redirect back to cart
+            if (selectedItems.length === 0) {
+                goto('/page-customer/cart');
+                return;
+            }
+            
+            // Get user shipping address from profile
+            addresses = $profile.addresses || [];
+            if (addresses.length > 0) {
+                shippingAddress = addresses.find((address: Address) => address.isDefault) || addresses[0];
+            }
+            
+            // Get any existing pending orders from localStorage
+            const storedOrders = localStorage.getItem('pendingOrders');
+            if (storedOrders) {
+                pendingOrders = JSON.parse(storedOrders);
+            }
+        } catch (err) {
+            error = err instanceof Error ? err.message : 'Failed to load data';
+            showErrorAlert = true;
+            errorMessage = error;
+        }
+    }
+    
     onMount(() => {
-        // Get selected items from the cart store instead of using mock data
-        selectedItems = $cartStore.items.filter(item => item.selected);
-        
-        // If no items are selected (shouldn't happen due to button being disabled), redirect back to cart
-        if (selectedItems.length === 0) {
-            goto('/page-customer/cart');
+        // Check if user is authenticated
+        if (!$auth.user) {
+            goto('/login?redirect=/page-customer/checkout');
             return;
         }
         
-        // Get user shipping address from mock data
-        if (mockUserData && mockUserData.addresses && mockUserData.addresses.length > 0) {
-            shippingAddress = mockUserData.addresses.find(address => address.isDefault) || mockUserData.addresses[0];
-        }
-        
-        // Get any existing pending orders from localStorage
-        const storedOrders = localStorage.getItem('pendingOrders');
-        if (storedOrders) {
-            pendingOrders = JSON.parse(storedOrders);
-        }
+        loadData();
     });
     
     $: subtotal = selectedItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
     $: total = subtotal + shippingFee;
     
-    function handlePlaceOrder() {
-        // Create new orders for each selected item
-        const newOrders: OrderItem[] = selectedItems.map(item => {
-            return {
-                id: generateOrderId(),
-                item: {
-                    name: item.product.name,
-                    image: item.product.image_url,
-                    price: item.product.price
-                },
-                quantity: item.quantity,
-                total_price: item.product.price * item.quantity,
-                status: 'pending',
-                date: new Date().toISOString().split('T')[0], // Today's date
-                seller: getSellerName(item.product.seller_id)
+    async function handlePlaceOrder() {
+        try {
+            isProcessing = true;
+            
+            // Create checkout data for API
+            const checkoutData = {
+                shipping_address: shippingAddress?.id?.toString() || '',
+                payment_method: paymentMethod
             };
-        });
-        
-        // Add the new orders to the pending orders list
-        pendingOrders = [...pendingOrders, ...newOrders];
-        
-        // Save to localStorage to persist data between pages
-        localStorage.setItem('pendingOrders', JSON.stringify(pendingOrders));
-        
-        // Remove the purchased items from the cart
-        selectedItems.forEach(item => {
-            cartStore.removeItem(
-                item.product.id,
-                item.variation.color,
-                item.variation.size
-            );
-        });
-        
-        // Show a success message
-        alert('Order placed successfully!');
-        
-        // Set session flag to redirect to pending tab
-        sessionStorage.setItem('fromCheckout', 'true');
-        
-        // Navigate to the orders page
-        goto('/page-customer/profile/my-purchases');
+            
+            // In a real implementation, we would call the API
+            // await api.checkout(checkoutData);
+            
+            // For now, we'll simulate the API call with local storage
+            // Create new orders for each selected item
+            const newOrders = selectedItems.map(item => {
+                return {
+                    id: generateOrderId(),
+                    item: {
+                        name: item.product.name,
+                        image: item.product.image_url || '/images/placeholder.jpg', // Ensure image is not undefined
+                        price: item.product.price
+                    },
+                    quantity: item.quantity,
+                    total_price: item.product.price * item.quantity,
+                    status: 'pending' as const,
+                    date: new Date().toISOString().split('T')[0], // Today's date
+                    seller: getSellerName(item.product.seller_id)
+                };
+            });
+            
+            // Add the new orders to the pending orders list
+            pendingOrders = [...pendingOrders, ...newOrders];
+            
+            // Save to localStorage to persist data between pages
+            localStorage.setItem('pendingOrders', JSON.stringify(pendingOrders));
+            
+            // Remove the purchased items from the cart
+            for (const item of selectedItems) {
+                await cart.removeFromCart(
+                    item.product.id,
+                    {
+                        color: item.variation.color,
+                        size: item.variation.size
+                    }
+                );
+            }
+            
+            // Show a success message
+            showSuccessAlert = true;
+            
+            // Set session flag to redirect to pending tab
+            sessionStorage.setItem('fromCheckout', 'true');
+            
+            // Navigate to the orders page after a short delay
+            setTimeout(() => {
+                goto('/page-customer/profile/my-purchases');
+            }, 1500);
+        } catch (err) {
+            error = err instanceof Error ? err.message : 'Failed to place order';
+            showErrorAlert = true;
+            errorMessage = error;
+        } finally {
+            isProcessing = false;
+        }
     }
 </script>
 
@@ -176,8 +226,31 @@
     <title>Checkout | QuickShopping</title>
 </svelte:head>
 
+{#if showSuccessAlert}
+    <Alerts 
+        isVisible={showSuccessAlert}
+        type="success" 
+        title="Order placed successfully!" 
+        on:close={() => showSuccessAlert = false} 
+    />
+{/if}
+
+{#if showErrorAlert}
+    <Alerts 
+        isVisible={showErrorAlert}
+        type="error" 
+        title={errorMessage} 
+        on:close={() => showErrorAlert = false} 
+    />
+{/if}
+
 <div class="max-w-6xl mx-auto px-4 py-8">
-    <div class="flex flex-col lg:flex-row gap-8">
+    {#if loading}
+        <div class="flex justify-center items-center py-10">
+            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#789DBC]"></div>
+        </div>
+    {:else}
+        <div class="flex flex-col lg:flex-row gap-8">
         <!-- Left column: Shipping Address and Product Details -->
         <div class="w-full lg:w-8/12">
             <!-- Shipping Address -->
@@ -314,10 +387,12 @@
                 <button 
                     class="w-full bg-[#789DBC] text-white font-semibold py-3 px-6 rounded-lg mt-6 hover:bg-[#5e7ea0] transition-colors"
                     on:click={handlePlaceOrder}
+                    disabled={loading || !shippingAddress || selectedItems.length === 0}
                 >
-                    PLACE ORDER
+                    {isProcessing ? 'PROCESSING...' : 'PLACE ORDER'}
                 </button>
             </div>
         </div>
-    </div>
+        </div>
+    {/if}
 </div>

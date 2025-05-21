@@ -1,10 +1,34 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
-  import type { Product } from '$lib/stores/products';
-  import { reviewStore } from '$lib/stores/reviews';
+  import { products } from '$lib/stores/products';
+  import { reviews } from '$lib/stores/reviews';
+  import { cart } from '$lib/stores/cart';
   import AddToCartModal from './AddToCartModal.svelte';
   import AddToCartSuccess from './Alerts.svelte';
   import ReportProductModal from './ReportProductModal.svelte';
+  
+  // Define Product interface inline
+  interface Product {
+    id: number;
+    seller_id?: number;
+    name: string;
+    description?: string;
+    price: number;
+    stock?: number;
+    image_url?: string;
+    is_active?: boolean;
+    created_at?: string;
+    updated_at?: string | null;
+    rating?: number;
+    review_count?: number;
+    category?: string;
+    variations?: {
+      sizes?: any[];
+      sizeType?: string;
+      sizeUnit?: string;
+      colors?: string[];
+    };
+  }
 
   export let product: Product;
   export let isOpen: boolean = false;
@@ -16,33 +40,20 @@
   let showSuccessOverlay: boolean = false;
   let showReportModal: boolean = false;
   let buyNowMode: boolean = false;
+  let isReporting: boolean = false;
   
   // Get product reviews
-  $: productReviews = $reviewStore.reviews.filter(review => review.product_id === product.id);
-
-  // Mock business profiles
-  const mockBusinessProfiles: Record<string, { business_name: string; logo_url: null }> = {
-    '1': { business_name: 'Fresh Produce Co.', logo_url: null },
-    '2': { business_name: 'Organic Delights', logo_url: null },
-    '3': { business_name: 'Farm Fresh Market', logo_url: null },
-    '4': { business_name: 'Local Harvest', logo_url: null },
-    '5': { business_name: 'Green Grocer', logo_url: null }
-  };
+  $: productReviews = $reviews.reviews.filter(review => review.product_id === product.id);
 
   onMount(() => {
     // Only fetch seller name if not already provided
-    if (!sellerName) {
-      // Use mock data instead of API call
-      const mockProfile = mockBusinessProfiles[product.seller_id.toString()];
-      if (mockProfile) {
-        sellerName = mockProfile.business_name;
-      }
+    if (!sellerName && product.seller_id) {
+      // In a real implementation, you would fetch the seller profile from an API
+      // For now, we'll keep the sellerName as provided by the parent component
     }
     
-    // Generate random buyers count if not provided
-    if (buyersCount === 0) {
-      buyersCount = Math.floor(Math.random() * 1000) + 10;
-    }
+    // Use the provided buyersCount or keep it as is
+    // In a real implementation, you might want to fetch this from an API
   });
 
   const dispatch = createEventDispatcher();
@@ -55,9 +66,20 @@
     showReportModal = true;
   }
 
-  function handleReportSubmit(event: CustomEvent) {
-    dispatch('report', event.detail);
-    // Additional reporting logic can be added here
+  async function handleReportSubmit(event: CustomEvent) {
+    const { productId, reason } = event.detail;
+    isReporting = true;
+    
+    try {
+      await products.reportProduct(productId, reason, 'Reported from product modal');
+      showReportModal = false;
+      // Notify parent component about the report
+      dispatch('report', event.detail);
+    } catch (error) {
+      console.error('Failed to report product:', error);
+    } finally {
+      isReporting = false;
+    }
   }
 
   function formatPrice(price: number): string {
@@ -92,17 +114,47 @@
     });
   }
 
-  function handleAddToCart(event: CustomEvent) {
-    dispatch('addToCart', event.detail);
+  async function handleAddToCart(event: CustomEvent) {
+    const cartData = event.detail;
     
-    // Show success overlay
-    showSuccessOverlay = false;
-    showAddToCartModal = false;
+    try {
+      // Add to cart using cart store
+      await cart.addToCart({
+        item_id: cartData.product.id,
+        quantity: cartData.quantity || 1,
+        variation: cartData.variation
+      });
+      
+      // Notify parent component
+      dispatch('addToCart', cartData);
+      
+      // Show success overlay
+      showAddToCartModal = false;
+      showSuccessOverlay = true;
+    } catch (error) {
+      console.error('Failed to add item to cart:', error);
+    }
   }
 
-  function handleBuyNow(event: CustomEvent) {
-    dispatch('buy', event.detail);
-    showAddToCartModal = false;
+  async function handleBuyNow(event: CustomEvent) {
+    const cartData = event.detail;
+    
+    try {
+      // Add to cart using cart store
+      await cart.addToCart({
+        item_id: cartData.product.id,
+        quantity: cartData.quantity || 1,
+        variation: cartData.variation
+      });
+      
+      // Notify parent component
+      dispatch('buy', cartData);
+      
+      // Close modal
+      showAddToCartModal = false;
+    } catch (error) {
+      console.error('Failed to process buy now:', error);
+    }
   }
 
   function closeSuccessOverlay() {
