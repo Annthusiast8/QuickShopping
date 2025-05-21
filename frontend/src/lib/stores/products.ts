@@ -1,176 +1,97 @@
 import { writable } from 'svelte/store';
-import { api } from '$lib/services/api.js';
+import { api } from '../services/api';
+import type { ProductData, FilterParams } from '../services/api';
 
-export interface Product {
-  id: number;
-  seller_id: number;
-  name: string;
-  description: string | null;
-  price: number;
-  stock: number;
-  image_url: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string | null;
-  rating?: number;
-  review_count?: number;
-  category?: string;
-  variations?: {
-    sizes: string[] | number[];
-    sizeType: 'standard' | 'numeric';
-    sizeUnit?: 'cm' | 'inch' | 'mm'; // Only used when sizeType is 'numeric'
-    colors: string[];
-  };
-}
-
-function createProductStore() {
-  const { subscribe, set, update } = writable<{
-    products: Product[];
+interface ProductsState {
+    items: any[];
+    selectedItem: any | null;
     loading: boolean;
     error: string | null;
-  }>({
-    products: [],
-    loading: false,
-    error: null
-  });
-
-  return {
-    subscribe,
-
-    // Get all products for a seller
-    fetchSellerProducts: async (sellerId: number) => {
-      update(state => ({ ...state, loading: true, error: null }));
-      try {
-        const response = await api.get(`seller/products/${sellerId}`);
-        if (response.payload) {
-          update(state => ({
-            ...state,
-            products: response.payload,
-            loading: false
-          }));
-        } else {
-          throw new Error(response.status?.message || 'Failed to fetch products');
-        }
-      } catch (err: any) {
-        update(state => ({
-          ...state,
-          error: err.message || 'Error fetching products',
-          loading: false
-        }));
-        throw err;
-      }
-    },
-
-    // Add a new product
-    addProduct: async (productData: Partial<Product>) => {
-      update(state => ({ ...state, loading: true, error: null }));
-      try {
-        const response = await api.post('seller/products/add', productData);
-        if (response.payload) {
-          update(state => ({
-            ...state,
-            products: [...state.products, response.payload],
-            loading: false
-          }));
-          return response;
-        } else {
-          throw new Error(response.status?.message || 'Failed to add product');
-        }
-      } catch (err: any) {
-        update(state => ({
-          ...state,
-          error: err.message || 'Error adding product',
-          loading: false
-        }));
-        throw err;
-      }
-    },
-
-    // Update an existing product
-    updateProduct: async (productId: number, productData: Partial<Product>) => {
-      update(state => ({ ...state, loading: true, error: null }));
-      try {
-        const response = await api.post(`seller/products/update/${productId}`, productData);
-        if (response.payload) {
-          update(state => ({
-            ...state,
-            products: state.products.map(p => 
-              p.id === productId ? { ...p, ...response.payload } : p
-            ),
-            loading: false
-          }));
-          return response;
-        } else {
-          throw new Error(response.status?.message || 'Failed to update product');
-        }
-      } catch (err: any) {
-        update(state => ({
-          ...state,
-          error: err.message || 'Error updating product',
-          loading: false
-        }));
-        throw err;
-      }
-    },
-
-    // Delete a product
-    deleteProduct: async (productId: number) => {
-      update(state => ({ ...state, loading: true, error: null }));
-      try {
-        const response = await api.delete(`seller/products/delete/${productId}`);
-        if (response.status?.remarks === 'success') {
-          update(state => ({
-            ...state,
-            products: state.products.filter(p => p.id !== productId),
-            loading: false
-          }));
-          return response;
-        } else {
-          throw new Error(response.status?.message || 'Failed to delete product');
-        }
-      } catch (err: any) {
-        update(state => ({
-          ...state,
-          error: err.message || 'Error deleting product',
-          loading: false
-        }));
-        throw err;
-      }
-    },
-
-    // Reset store state
-    reset: () => {
-      set({
-        products: [],
-        loading: false,
-        error: null
-      });
-    },
-
-    // Fetch all active products
-    fetchAllProducts: async () => {
-      update(state => ({ ...state, loading: true, error: null }));
-      try {
-        const response = await api.get('products');
-        if (response.payload) {
-          update(state => ({
-            ...state,
-            products: response.payload,
-            loading: false
-          }));
-        } else {
-          throw new Error(response.status?.message || 'Failed to fetch products');
-        }
-      } catch (err: any) {
-        update(state => ({
-          ...state,
-          error: err.message || 'Error fetching products',
-          loading: false
-        }));
-        throw err;
-      }
-    }
-  };
+    filters: FilterParams;
+    pagination: {
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    } | null;
 }
 
-export const productStore = createProductStore(); 
+function createProductsStore() {
+    const { subscribe, set, update } = writable<ProductsState>({
+        items: [],
+        selectedItem: null,
+        loading: false,
+        error: null,
+        filters: {},
+        pagination: null
+    });
+
+    return {
+        subscribe,
+        loadProducts: async (filters?: FilterParams) => {
+            update(state => ({ ...state, loading: true, error: null, filters: filters || {} }));
+            try {
+                const response = await api.getProducts(filters);
+                update(state => ({
+                    ...state,
+                    items: response.data,
+                    pagination: response.meta,
+                    loading: false
+                }));
+                return response;
+            } catch (error) {
+                update(state => ({
+                    ...state,
+                    loading: false,
+                    error: error instanceof Error ? error.message : 'Failed to load products'
+                }));
+                throw error;
+            }
+        },
+        loadProduct: async (productId: number) => {
+            update(state => ({ ...state, loading: true, error: null }));
+            try {
+                const product = await api.getProduct(productId);
+                update(state => ({
+                    ...state,
+                    selectedItem: product,
+                    loading: false
+                }));
+                return product;
+            } catch (error) {
+                update(state => ({
+                    ...state,
+                    loading: false,
+                    error: error instanceof Error ? error.message : 'Failed to load product'
+                }));
+                throw error;
+            }
+        },
+        reportProduct: async (itemId: number, reason: string, description: string) => {
+            update(state => ({ ...state, loading: true, error: null }));
+            try {
+                const response = await api.reportProduct(itemId, { reason, description });
+                update(state => ({ ...state, loading: false }));
+                return response;
+            } catch (error) {
+                update(state => ({
+                    ...state,
+                    loading: false,
+                    error: error instanceof Error ? error.message : 'Failed to report product'
+                }));
+                throw error;
+            }
+        },
+        clearSelected: () => {
+            update(state => ({ ...state, selectedItem: null }));
+        },
+        updateFilters: (filters: Partial<FilterParams>) => {
+            update(state => ({
+                ...state,
+                filters: { ...state.filters, ...filters }
+            }));
+        }
+    };
+}
+
+export const products = createProductsStore(); 

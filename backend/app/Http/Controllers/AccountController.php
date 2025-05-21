@@ -61,8 +61,8 @@ class AccountController extends Controller
             // Delete reports
             ItemReport::where('user_id', $user->id)->delete();
             
-            // Delete user
-            $user->delete();
+            // Delete user using DB facade instead of model method
+            DB::table('users')->where('id', $user->id)->delete();
             
             DB::commit();
             
