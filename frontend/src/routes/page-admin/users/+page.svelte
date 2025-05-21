@@ -6,15 +6,81 @@
 
     let { data }: { data: PageData } = $props();
     let searchQuery = $state('');
-    let userType = $state('Seller');
+    let userType = $state('All');
     let sortBy = $state('User ID');
     let showPerPage = $state('5');
 
 
     // Store reactive variables using runes syntax
-    const users = $derived($admin.users);
     const loading = $derived($admin.loading);
     const error = $derived($admin.error);
+    
+    // Filter and sort users based on selected criteria
+    let filteredUsers = $state<User[]>([]);
+    
+    // Update filtered users whenever dependencies change
+    $effect(() => {
+        if (!$admin.users || $admin.users.length === 0) {
+            filteredUsers = [];
+            return;
+        }
+        
+        // First filter by search query
+        let result = $admin.users.filter(user => {
+            if (!searchQuery) return true;
+            
+            const query = searchQuery.toLowerCase();
+            return (
+                user.name.toLowerCase().includes(query) ||
+                user.email.toLowerCase().includes(query) ||
+                user.id.toString().includes(query)
+            );
+        });
+        
+        // Then filter by user type
+        if (userType === 'Seller') {
+            result = result.filter(user => user.role === 'seller');
+        } else if (userType === 'Customer') {
+            result = result.filter(user => user.role === 'customer');
+        } else if (userType === 'Admin') {
+            result = result.filter(user => user.role === 'admin');
+        }
+        
+        // Sort users based on selected criteria
+        filteredUsers = result.sort((a, b) => {
+            switch (sortBy) {
+                case 'User ID':
+                    return a.id - b.id;
+                case 'Username':
+                    return a.name.localeCompare(b.name);
+                case 'Status':
+                case 'Type':
+                    return a.role.localeCompare(b.role);
+                case 'Date Joined':
+                    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                default:
+                    return 0;
+            }
+        });
+    });
+    
+    // Pagination
+    let perPage = $state(parseInt(showPerPage));
+    let totalPages = $state(1);
+    let currentPage = $state(1);
+    
+    // Update pagination variables when dependencies change
+    $effect(() => {
+        perPage = parseInt(showPerPage);
+        totalPages = Math.ceil(filteredUsers.length / perPage);
+    });
+    
+    // Get current page users
+    let paginatedUsers = $state<User[]>([]);
+    $effect(() => {
+        const startIndex = (currentPage - 1) * perPage;
+        paginatedUsers = filteredUsers.slice(startIndex, startIndex + perPage);
+    })
     
     // For role update modal
     let showRoleModal = $state(false);
@@ -113,14 +179,26 @@
                         <span class="text-sm font-medium text-gray-700">User Type:</span>
                         <div class="flex gap-3 flex-wrap">
                             <button 
+                                class="px-4 py-2 border border-gray-200 rounded-full text-sm text-gray-600 transition-colors {userType === 'All' ? 'bg-[#92A8D1] text-white border-[#92A8D1]' : 'bg-[#F5ECD5] hover:bg-[#eee4cc]'}"
+                                onclick={() => { userType = 'All'; currentPage = 1; }}
+                            >
+                                All
+                            </button>
+                            <button 
+                                class="px-4 py-2 border border-gray-200 rounded-full text-sm text-gray-600 transition-colors {userType === 'Admin' ? 'bg-[#92A8D1] text-white border-[#92A8D1]' : 'bg-[#F5ECD5] hover:bg-[#eee4cc]'}"
+                                onclick={() => { userType = 'Admin'; currentPage = 1; }}
+                            >
+                                Admin
+                            </button>
+                            <button 
                                 class="px-4 py-2 border border-gray-200 rounded-full text-sm text-gray-600 transition-colors {userType === 'Seller' ? 'bg-[#92A8D1] text-white border-[#92A8D1]' : 'bg-[#F5ECD5] hover:bg-[#eee4cc]'}"
-                                onclick={() => userType = 'Seller'}
+                                onclick={() => { userType = 'Seller'; currentPage = 1; }}
                             >
                                 Seller
                             </button>
                             <button 
                                 class="px-4 py-2 border border-gray-200 rounded-full text-sm text-gray-600 transition-colors {userType === 'Customer' ? 'bg-[#92A8D1] text-white border-[#92A8D1]' : 'bg-[#F5ECD5] hover:bg-[#eee4cc]'}"
-                                onclick={() => userType = 'Customer'}
+                                onclick={() => { userType = 'Customer'; currentPage = 1; }}
                             >
                                 Customer
                             </button>
@@ -133,7 +211,7 @@
                             {#each ['User ID', 'Username', 'Status', 'Type', 'Date Joined'] as option}
                                 <button 
                                     class="px-4 py-2 border border-gray-200 rounded-full text-sm text-gray-600 transition-colors {sortBy === option ? 'bg-[#92A8D1] text-white border-[#92A8D1]' : 'bg-[#F5ECD5] hover:bg-[#eee4cc]'}"
-                                    onclick={() => sortBy = option}
+                                    onclick={() => { sortBy = option; currentPage = 1; }}
                                 >
                                     {option}
                                 </button>
@@ -151,12 +229,19 @@
                         <select 
                             bind:value={showPerPage}
                             class="px-2 py-1 border border-gray-200 rounded text-sm text-gray-600"
+                            onchange={() => currentPage = 1}
                         >
                             <option value="3">Show 3</option>
                             <option value="5">Show 5</option>
                             <option value="10">Show 10</option>
+                            <option value="20">Show 20</option>
                         </select>
-                        <button class="text-[#92A8D1] text-sm">View All</button>
+                        <button 
+                            class="text-[#92A8D1] text-sm"
+                            onclick={() => { showPerPage = filteredUsers.length.toString(); currentPage = 1; }}
+                        >
+                            View All
+                        </button>
                     </div>
                 </div>
 
@@ -175,7 +260,7 @@
                     </div>
 
                     <div class="bg-white">
-                        {#if loading && users.length === 0}
+                        {#if loading && $admin.users.length === 0}
                             <div class="p-10 text-center text-sm text-gray-500">
                                 <div class="flex justify-center">
                                     <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-[#21463E]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -185,12 +270,12 @@
                                     <span>Loading users...</span>
                                 </div>
                             </div>
-                        {:else if users.length === 0}
+                        {:else if filteredUsers.length === 0}
                             <div class="p-10 text-center text-sm text-gray-500">
-                                No users found
+                                No users found matching your criteria
                             </div>
                         {:else}
-                            {#each users as user (user.id)}
+                            {#each paginatedUsers as user (user.id)}
                                 <div class="grid grid-cols-7 gap-4 p-4 border-b border-gray-200 hover:bg-gray-50">
                                     <div class="w-10 flex items-center justify-center">
                                         <input type="checkbox" class="w-4 h-4 border border-gray-300 rounded">
@@ -222,6 +307,41 @@
                             {/each}
                         {/if}
                     </div>
+                    
+                    <!-- Pagination Controls -->
+                    {#if filteredUsers.length > 0 && totalPages > 1}
+                        <div class="flex justify-between items-center mt-4 px-4">
+                            <div class="text-sm text-gray-500">
+                                Showing {(currentPage - 1) * perPage + 1} to {Math.min(currentPage * perPage, filteredUsers.length)} of {filteredUsers.length} users
+                            </div>
+                            <div class="flex gap-2">
+                                <button 
+                                    onclick={() => currentPage = Math.max(1, currentPage - 1)}
+                                    class="px-3 py-1 border border-gray-200 rounded text-sm {currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-50'}"
+                                    disabled={currentPage === 1}
+                                >
+                                    Previous
+                                </button>
+                                {#each Array.from({length: Math.min(5, totalPages)}).map((_, i) => i) as i}
+                                    {#if totalPages <= 5 || (i < 3 && currentPage <= 3) || (i >= totalPages - 3 && currentPage >= totalPages - 2) || (i >= currentPage - 2 && i <= currentPage)}
+                                        <button 
+                                            onclick={() => currentPage = i + 1}
+                                            class="px-3 py-1 border border-gray-200 rounded text-sm {currentPage === i + 1 ? 'bg-[#92A8D1] text-white border-[#92A8D1]' : 'text-gray-600 hover:bg-gray-50'}"
+                                        >
+                                            {i + 1}
+                                        </button>
+                                    {/if}
+                                {/each}
+                                <button 
+                                    onclick={() => currentPage = Math.min(totalPages, currentPage + 1)}
+                                    class="px-3 py-1 border border-gray-200 rounded text-sm {currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-50'}"
+                                    disabled={currentPage === totalPages}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    {/if}
                 </div>
             </div>
         </div>
