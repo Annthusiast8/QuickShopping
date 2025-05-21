@@ -158,6 +158,7 @@
     <Header />
     <main class="flex-1 p-6 max-w-[calc(100vw-200px)]">
         <div class="max-w-7xl mx-auto">
+            <h1 class="text-2xl font-bold text-gray-800 mb-6">User Management</h1>
             <!-- Search Section -->
             <div class="mb-6 bg-transparent p-6 max-w-3xl">
                 <div class="flex items-center mb-6 bg-white rounded-full border border-gray-200 p-2 max-w-2xl">
