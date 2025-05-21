@@ -2,70 +2,32 @@
     import type { PageData } from './$types';
     import Header from '$lib/header.svelte';
     import { onMount } from 'svelte';
-    import { usersStore, type User } from '$lib/stores/users';
+    import { admin, type User } from '$lib/stores/admin';
 
     let { data }: { data: PageData } = $props();
-    let searchQuery = '';
-    let userType = 'Seller';
-    let sortBy = 'User ID';
-    let showPerPage = '5';
+    let searchQuery = $state('');
+    let userType = $state('Seller');
+    let sortBy = $state('User ID');
+    let showPerPage = $state('5');
 
-    // Dummy data for testing
-    const dummyUsers: User[] = [
-        {
-            id: 1,
-            name: 'John Doe',
-            role: 'admin',
-            created_at: '2024-01-15T10:30:00Z',
-            email: 'john@example.com'
-        },
-        {
-            id: 2,
-            name: 'Jane Smith',
-            role: 'seller',
-            created_at: '2024-02-20T14:45:00Z',
-            email: 'jane@example.com'
-        },
-        {
-            id: 3,
-            name: 'Mike Johnson',
-            role: 'customer',
-            created_at: '2024-03-01T09:15:00Z',
-            email: 'mike@example.com'
-        },
-        {
-            id: 4,
-            name: 'Sarah Wilson',
-            role: 'seller',
-            created_at: '2024-03-10T16:20:00Z',
-            email: 'sarah@example.com'
-        },
-        {
-            id: 5,
-            name: 'David Brown',
-            role: 'customer',
-            created_at: '2024-03-15T11:00:00Z',
-            email: 'david@example.com'
-        }
-    ];
 
     // Store reactive variables using runes syntax
-    const users = $derived($usersStore.users.length > 0 ? $usersStore.users : dummyUsers);
-    const loading = $derived($usersStore.loading);
-    const error = $derived($usersStore.error);
+    const users = $derived($admin.users);
+    const loading = $derived($admin.loading);
+    const error = $derived($admin.error);
     
     // For role update modal
-    let showRoleModal = false;
-    let selectedUser: User | null = null;
-    let selectedRole: 'admin' | 'seller' | 'customer' = 'customer';
+    let showRoleModal = $state(false);
+    let selectedUser = $state<User | null>(null);
+    let selectedRole = $state<'admin' | 'seller' | 'customer'>('customer');
     
     // For delete confirmation modal
-    let showDeleteModal = false;
-    let userToDelete: User | null = null;
+    let showDeleteModal = $state(false);
+    let userToDelete = $state<User | null>(null);
     
     // Fetch users on component mount
     onMount(() => {
-      usersStore.fetchUsers();
+      admin.loadUsers();
     });
     
     function openRoleModal(user: User) {
@@ -81,7 +43,7 @@
     
     async function updateUserRole() {
       if (selectedUser && selectedRole) {
-        await usersStore.updateUserRole(selectedUser.id, selectedRole);
+        await admin.updateUserRole(selectedUser.id, selectedRole);
         closeRoleModal();
       }
     }
@@ -98,7 +60,7 @@
     
     async function deleteUser() {
       if (userToDelete) {
-        await usersStore.deleteUser(userToDelete.id);
+        await admin.deleteUser(userToDelete.id);
         closeDeleteModal();
       }
     }
@@ -152,13 +114,13 @@
                         <div class="flex gap-3 flex-wrap">
                             <button 
                                 class="px-4 py-2 border border-gray-200 rounded-full text-sm text-gray-600 transition-colors {userType === 'Seller' ? 'bg-[#92A8D1] text-white border-[#92A8D1]' : 'bg-[#F5ECD5] hover:bg-[#eee4cc]'}"
-                                on:click={() => userType = 'Seller'}
+                                onclick={() => userType = 'Seller'}
                             >
                                 Seller
                             </button>
                             <button 
                                 class="px-4 py-2 border border-gray-200 rounded-full text-sm text-gray-600 transition-colors {userType === 'Customer' ? 'bg-[#92A8D1] text-white border-[#92A8D1]' : 'bg-[#F5ECD5] hover:bg-[#eee4cc]'}"
-                                on:click={() => userType = 'Customer'}
+                                onclick={() => userType = 'Customer'}
                             >
                                 Customer
                             </button>
@@ -171,7 +133,7 @@
                             {#each ['User ID', 'Username', 'Status', 'Type', 'Date Joined'] as option}
                                 <button 
                                     class="px-4 py-2 border border-gray-200 rounded-full text-sm text-gray-600 transition-colors {sortBy === option ? 'bg-[#92A8D1] text-white border-[#92A8D1]' : 'bg-[#F5ECD5] hover:bg-[#eee4cc]'}"
-                                    on:click={() => sortBy = option}
+                                    onclick={() => sortBy = option}
                                 >
                                     {option}
                                 </button>
@@ -244,13 +206,13 @@
                                     <div class="text-sm text-gray-600">{formatDate(user.created_at)}</div>
                                     <div class="flex gap-3 justify-end pr-4">
                                         <button 
-                                            on:click={() => openRoleModal(user)}
+                                            onclick={() => openRoleModal(user)}
                                             class="opacity-70 hover:opacity-100 transition-opacity"
                                         >
                                             <img src="/Edit User.png" alt="Edit" class="w-[18px] h-[18px]">
                                         </button>
                                         <button 
-                                            on:click={() => openDeleteModal(user)}
+                                            onclick={() => openDeleteModal(user)}
                                             class="opacity-70 hover:opacity-100 transition-opacity"
                                         >
                                             <img src="/Trash.png" alt="Delete" class="w-[18px] h-[18px]">
@@ -297,7 +259,7 @@
                     <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
                         <button 
                             type="button" 
-                            on:click={updateUserRole}
+                            onclick={updateUserRole}
                             class="inline-flex w-full justify-center rounded-md bg-[#21463E] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#143129] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:col-start-2"
                             disabled={loading}
                         >
@@ -313,7 +275,7 @@
                         </button>
                         <button 
                             type="button" 
-                            on:click={closeRoleModal}
+                            onclick={closeRoleModal}
                             class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0"
                         >
                             Cancel
@@ -349,7 +311,7 @@
                 <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
                     <button 
                         type="button" 
-                        on:click={deleteUser}
+                        onclick={deleteUser}
                         class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
                         disabled={loading}
                     >
@@ -365,7 +327,7 @@
                     </button>
                     <button 
                         type="button" 
-                        on:click={closeDeleteModal}
+                        onclick={closeDeleteModal}
                         class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
                     >
                         Cancel

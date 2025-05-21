@@ -31,7 +31,7 @@
             
             switch (userRole) {
                 case "admin":
-                    goto("/page-admin/dashboard");
+                    goto("/page-admin/users");
                     break;
                 case "seller":
                     goto("/page-seller/profile");

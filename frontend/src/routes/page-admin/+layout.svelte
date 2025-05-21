@@ -1,21 +1,32 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { auth } from '$lib/stores/auth';
+  import { admin } from '$lib/stores/admin';
   import { goto } from '$app/navigation';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import Header from '$lib/header.svelte';
 
-  // Check if user is logged in and is admin (COMMENT)
-  /*onMount(() => {
-    if (!$auth.isAuthenticated) {
+  // Check if user is logged in and is admin
+  onMount(() => {
+    if (!$auth.user) {
       goto('/login');
       return;
     }
 
-    if ($auth.user && $auth.user.role !== 'admin') {
+    if ($auth.user.role !== 'admin') {
       goto('/login');
+      return;
     }
-  });*/
+    
+    // Load admin data when component mounts
+    admin.loadUsers();
+  });
+  
+  // Clean up when component is destroyed
+  onDestroy(() => {
+    // Reset admin store when navigating away
+    admin.reset();
+  });
 
   function logout() {
     auth.logout();
@@ -28,16 +39,18 @@
     { name: 'Users', icon: '/Users.png', href: '/page-admin/users' },
     { name: 'Business', icon: '/Business.png', href: '/page-admin/orders' },
     { name: 'Reported Items', icon: '/cart.png', href: '/page-admin/products' },
+    { name: 'Reports', icon: '/reports.png', href: '/page-admin/reports' }
   ];
 
-  // You can keep your stats logic here
-  let stats = [
-    { name: 'Total Users', value: '12,457', icon: '/users.svg' },
-    { name: 'Montly Orders', value: '6,095', icon: '/orders.svg' },
-    { name: 'Pending Deliveries', value: '132', icon: '/delivery.svg' },
+  // Stats will be updated from the admin store
+  $: stats = [
+    { name: 'Total Users', value: $admin.users.length.toString(), icon: '/users.svg' },
+    { name: 'Pending Businesses', value: $admin.pendingBusinesses.length.toString(), icon: '/business.svg' },
+    { name: 'Reports', value: $admin.reports.length.toString(), icon: '/reports.svg' },
     { name: 'Total Visitors', value: '8,742', icon: '/visitors.svg' }
   ];
 
+  // You can keep your latest orders logic here
   let latestOrders = [
     { id: '1231', product: 'Prada Veloce X1 Sunglasses', img: '/sunglasses.png', date: '03.15.2025 - 07:12 AM', customer: 'Zhang Ruonan', total: '$1,355' },
     { id: '1232', product: 'Prada Veloce X1 Sunglasses', img: '/sunglasses.png', date: '03.10.2025 - 06:29 PM', customer: 'Wang Yibo', total: '$1,355' },
