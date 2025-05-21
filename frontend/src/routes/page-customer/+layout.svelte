@@ -1,14 +1,15 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { auth } from '$lib/stores/auth';
+  import { cart } from '$lib/stores/cart';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import CartIndicator from '$lib/components/CartIndicator.svelte';
   import Alerts from '$lib/components/Alerts.svelte';
 
-  //*Check if user is logged in and is a customer (COMMENT)
-  /*onMount(() => {
-    if (!$auth.isAuthenticated) {
+  // Check if user is logged in and is a customer
+  onMount(() => {
+    if (!$auth.token) {
       goto('/login');
       return;
     }
@@ -16,7 +17,7 @@
     if ($auth.user && $auth.user.role !== 'customer') {
       goto('/login');
     }
-  }); */
+  });
 
   // Logout alert state
   let showLogoutAlert = false;
@@ -37,11 +38,14 @@
   // Navigation items
   const navItems = [
     { label: 'Shop', href: '/page-customer/home', icon: 'shopping-bag' },
+    { label: 'Cart', href: '/page-customer/cart', icon: 'shopping-cart' },
+    { label: 'Profile', href: '/page-customer/profile', icon: 'user' },
+    { label: 'My Purchases', href: '/page-customer/profile/my-purchases', icon: 'receipt' }
   ];
 
   // Profile menu state
   let showProfileMenu = false;
-  let profileMenuRef: HTMLDivElement;
+  let profileMenuRef: HTMLDivElement | null = null;
 
   function toggleProfileMenu() {
     showProfileMenu = !showProfileMenu;
@@ -201,125 +205,139 @@
   }
 </script>
 
-<div class="min-h-screen bg-[#F5ECD5]">
-  <!-- Navigation Bar -->
-  <nav class="bg-[#789DBC] shadow-md sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between items-center h-16">
-        <!-- Logo - Hidden on mobile -->
-        <div class="flex-shrink-0 hidden sm:block">
-          <a href="/page-customer/home" class="flex items-center">
-            <h1 class="text-2xl font-bold text-[#fffff]">
-              Quick<span class="text-yellow-500">Buy</span>
-            </h1>
-          </a>
+<div class="min-h-screen bg-[#F5ECD5] flex">
+  <!-- Sidebar Navigation -->
+  <aside class="w-64 bg-white shadow-md hidden md:block">
+    <div class="h-full flex flex-col">
+      <!-- Logo -->
+      <div class="p-4 border-b">
+        <a href="/page-customer/home" class="flex items-center">
+          <h1 class="text-xl font-bold text-gray-800">
+            Quick<span class="text-yellow-500">Shopping</span>
+          </h1>
+        </a>
+      </div>
+      
+      <!-- User Profile Section -->
+      <div class="p-4 border-b flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
+          <svg class="w-full h-full text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+          </svg>
         </div>
-
-        <!-- Filter and Search Section -->
-        <div class="flex-1 max-w-full sm:max-w-2xl sm:mx-8 flex items-center">
-          <!-- Filter Button - Only show on home page -->
-          
-          <!-- Search Bar -->
-          <form on:submit={handleSearch} class="w-full">
-            <div class="relative flex items-center bg-[#f2f2f2] rounded-full">
-              <input
-                bind:value={searchQuery}
-                on:input={handleSearchInput}
-                placeholder="Search product..."
-                class="block w-full pl-4 pr-10 py-2 bg-transparent border-none rounded-full focus:outline-none focus:ring-0 sm:text-sm"
-              />
-              <button 
-                type="submit" 
-                class="absolute right-0 p-2 rounded-full focus:outline-none"
-              >
-                <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-              </button>
-            </div>
-          </form>
-        </div>
-
-        <!-- Navigation Icons -->
-        <div class="flex items-center space-x-1 sm:space-x-4">
-          {#each navItems as item}
-            <a
-              href={item.href}
-              class="p-1.5 sm:p-2 rounded-full hover:bg-gray-100 {isActive(item.href) ? 'text-[#dad736]' : 'text-gray-600'}"
-              title={item.label}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                {#if item.icon === 'chart-pie'}
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
-                {:else if item.icon === 'star'}
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                {:else if item.icon === 'store'}
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h18v2a3 3 0 01-3 3H6a3 3 0 01-3-3V3zm0 15v-2a3 3 0 013-3h12a3 3 0 013 3v2H3zm12-9h3v3h-3V9zM9 9h3v3H9V9zM6 9h.01v.01H6V9z" />
-                {:else if item.icon === 'shopping-bag'}
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                {:else if item.icon === 'shopping-shop'}
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                {/if}
-              </svg>
-            </a>
-          {/each}
-
-          <!-- Cart with count indicator -->
-          <div class="p-1.5 sm:p-2 rounded-full hover:bg-gray-100 {isActive('/page-customer/cart') ? 'text-[#dad736]' : 'text-gray-600'}">
-            <CartIndicator />
-          </div>
-
-          <!-- Profile Button with Dropdown -->
-          <div class="relative">
-            <button
-              on:click={handleProfileClick}
-              class="p-1.5 sm:p-2 rounded-full hover:bg-gray-100 {isActive('/page-customer/profile') ? 'text-[#dad736]' : 'text-gray-600'}"
-              title="Profile"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </button>
-
-            <!-- Profile Dropdown Menu -->
-            {#if showProfileMenu}
-              <div 
-                bind:this={profileMenuRef}
-                on:click|stopPropagation
-                class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10"
-              >
-                <a
-                  href="/page-customer/profile"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  My Profile
-                </a>
-                <a
-                  href="/page-customer/profile/my-purchases"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  My Purchases
-                </a>
-                <button
-                  on:click|stopPropagation={logout}
-                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Logout
-                </button>
-              </div>
-            {/if}
-          </div>
+        <div>
+          <p class="font-medium text-gray-800">{$auth.user ? $auth.user.name : 'Guest'}</p>
+          <p class="text-xs text-gray-500">{$auth.user ? $auth.user.email : ''}</p>
         </div>
       </div>
+      
+      <!-- Navigation Links -->
+      <nav class="flex-1 p-4 space-y-2">
+        {#each navItems as item}
+          <a 
+            href={item.href} 
+            class="flex items-center space-x-3 p-3 rounded-lg transition-colors {isActive(item.href) ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-100'}"
+          >
+            <span class="w-6 h-6">
+              {#if item.icon === 'shopping-bag'}
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              {:else if item.icon === 'shopping-cart'}
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              {:else if item.icon === 'user'}
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              {:else if item.icon === 'receipt'}
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              {/if}
+            </span>
+            <span>{item.label}</span>
+            
+            {#if item.icon === 'shopping-cart'}
+              <span class="ml-auto bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                {$cart.items.reduce((count: number, cartItem: any) => count + cartItem.quantity, 0)}
+              </span>
+            {/if}
+          </a>
+        {/each}
+      </nav>
+      
+      <!-- Logout Button -->
+      <div class="p-4 border-t">
+        <button 
+          onclick={logout}
+          class="w-full flex items-center justify-center space-x-2 p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span>Logout</span>
+        </button>
+      </div>
     </div>
-  </nav>
+  </aside>
 
-  <!-- Main Content -->
-  <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-    <slot />
-  </main>
+  <!-- Mobile Header and Content -->
+  <div class="flex-1 flex flex-col">
+    <!-- Mobile Header -->
+    <header class="bg-white shadow-sm p-4 flex items-center justify-between md:hidden">
+      <!-- Mobile Menu Button -->
+      <button class="text-gray-600" aria-label="Toggle mobile menu">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+      
+      <!-- Logo -->
+      <a href="/page-customer/home" class="flex items-center">
+        <h1 class="text-lg font-bold text-gray-800">
+          Quick<span class="text-yellow-500">Shopping</span>
+        </h1>
+      </a>
+      
+      <!-- Cart Icon -->
+      <div class="relative">
+        <CartIndicator />
+      </div>
+    </header>
+    
+    <!-- Search Bar -->
+    <div class="bg-white p-4 border-b">
+      <form onsubmit={handleSearch} class="w-full">
+        <div class="relative flex items-center bg-gray-100 rounded-lg">
+          <input
+            bind:value={searchQuery}
+            oninput={handleSearchInput}
+            placeholder="Search products..."
+            class="block w-full pl-4 pr-10 py-2 bg-transparent border-none rounded-lg focus:outline-none focus:ring-0 text-sm"
+          />
+          <button 
+            type="submit" 
+            class="absolute right-0 p-2 rounded-full focus:outline-none"
+            aria-label="Search"
+          >
+            <svg class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </button>
+        </div>
+      </form>
+    </div>
+    
+    <!-- Main Content -->
+    <main class="flex-1 p-4 bg-[#F5ECD5] overflow-auto">
+      <div class="max-w-7xl mx-auto">
+        <slot />
+      </div>
+    </main>
+  </div>
 
   <!-- Logout Alert -->
   <Alerts 

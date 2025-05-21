@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { cartStore } from '$lib/stores/cart';
+  import { cart } from '$lib/stores/cart';
 
   // Count total number of items in cart
-  $: itemCount = $cartStore.items.reduce((count, item) => count + item.quantity, 0);
+  $: itemCount = $cart.items.reduce((count, item) => count + item.quantity, 0);
 </script>
 
 <a href="/page-customer/cart" class="relative flex items-center">
