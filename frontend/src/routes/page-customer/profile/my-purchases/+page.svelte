@@ -1,10 +1,43 @@
 <script lang="ts">
-    import CustomerSidebar from '$lib/components/CustomerSidebar.svelte';
     import Alerts from '$lib/components/Alerts.svelte';
-    import { reviewStore } from '$lib/stores/reviews';
+    import { reviews } from '$lib/stores/reviews';
+    import { orders } from '$lib/stores/orders';
     import { auth } from '$lib/stores/auth';
+    import { api } from '$lib/services/api';
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
+    import { browser } from '$app/environment';
+    
+    // Order interface
+    interface OrderItem {
+        id: string;
+        item: {
+            name: string;
+            image: string;
+            price: number;
+        };
+        quantity: number;
+        total_price: number;
+        status: 'pending' | 'to_ship' | 'to_receive' | 'completed';
+        date: string;
+        seller: string;
+        review?: {
+            rating: number;
+            text: string;
+            date: string;
+        };
+    }
+    
+    // Review interface
+    interface ReviewData {
+        product_id: number;
+        user_id: number;
+        user_name: string;
+        user_image?: string;
+        rating: number;
+        comment: string;
+        images?: string[];
+    }
     
     let activeTab = 'All';
     const tabs = ['All', 'Pending', 'To Ship', 'To Receive', 'Completed'];
@@ -12,127 +45,113 @@
     // Search functionality
     let searchQuery = '';
     
-    // Mock data for orders
-    let orders = [
-        {
-            id: '1001',
-            item: {
-                name: 'Wireless Headphones',
-                image: 'https://placehold.co/100x100',
-                price: 79.99
-            },
-            quantity: 1,
-            total_price: 79.99,
-            status: 'pending',
-            date: '2023-11-05',
-            seller: 'AudioTech Store'
-        },
-        {
-            id: '1002',
-            item: {
-                name: 'Smart Watch',
-                image: 'https://placehold.co/100x100',
-                price: 159.99
-            },
-            quantity: 1,
-            total_price: 159.99,
-            status: 'to_ship',
-            date: '2023-11-10',
-            seller: 'GadgetWorld'
-        },
-        {
-            id: '1003',
-            item: {
-                name: 'Laptop Sleeve',
-                image: 'https://placehold.co/100x100',
-                price: 24.99
-            },
-            quantity: 2,
-            total_price: 49.98,
-            status: 'to_receive',
-            date: '2023-11-12',
-            seller: 'TechAccessories'
-        },
-        {
-            id: '1004',
-            item: {
-                name: 'Bluetooth Speaker',
-                image: 'https://placehold.co/100x100',
-                price: 45.99
-            },
-            quantity: 1,
-            total_price: 45.99,
-            status: 'completed',
-            date: '2023-10-28',
-            seller: 'AudioTech Store',
-            review: {
-                rating: 4,
-                text: 'Great sound quality and battery life. The only downside is it\'s a bit heavier than expected.',
-                date: '2023-11-01'
+    // Order data
+    let localOrders: OrderItem[] = [];
+    let loading = false;
+    let error: string | null = null;
+    
+    // Alert state
+    let showAlert = false;
+    let alertType: 'success' | 'error' | 'review-success' | 'delete-account' | 'delete-countdown' | 'profile-update' | 'logout-confirm' | 'delete-item' | 'report-success' = 'success';
+    let alertTitle = '';
+    let cartAdded = '';
+    
+    // Reactive variables from stores
+    $: storeOrders = $orders.orders || [];
+    $: storeLoading = $orders.loading;
+    $: storeError = $orders.error;
+    
+    // Combine loading states
+    $: loading = storeLoading;
+    
+    // Check if we came from checkout
+    let fromCheckout = false;
+    
+    async function loadOrders() {
+        try {
+            // First, try to load orders from the API
+            await orders.loadOrders();
+            
+            // Load orders from localStorage
+            loadOrdersFromLocalStorage();
+            
+            // If we came from checkout, switch to the Pending tab
+            if (fromCheckout) {
+                setActiveTab('Pending');
+                fromCheckout = false;
             }
-        },
-        {
-            id: '1005',
-            item: {
-                name: 'USB-C Charging Cable',
-                image: 'https://placehold.co/100x100',
-                price: 12.99
-            },
-            quantity: 3,
-            total_price: 38.97,
-            status: 'completed',
-            date: '2023-10-15',
-            seller: 'CableConnect'
-        },
-        // Additional pending orders for testing the cancel order functionality
-        {
-            id: '1006',
-            item: {
-                name: 'Wireless Mouse',
-                image: 'https://placehold.co/100x100',
-                price: 29.99
-            },
-            quantity: 1,
-            total_price: 29.99,
-            status: 'pending',
-            date: '2023-11-15',
-            seller: 'OfficeSupplies'
-        },
-        {
-            id: '1007',
-            item: {
-                name: 'Ergonomic Keyboard',
-                image: 'https://placehold.co/100x100',
-                price: 69.99
-            },
-            quantity: 1,
-            total_price: 69.99,
-            status: 'pending',
-            date: '2023-11-16',
-            seller: 'ComputerWorld'
-        },
-        {
-            id: '1008',
-            item: {
-                name: 'External Hard Drive 1TB',
-                image: 'https://placehold.co/100x100',
-                price: 89.99
-            },
-            quantity: 1,
-            total_price: 89.99,
-            status: 'pending',
-            date: '2023-11-17',
-            seller: 'StorageSolutions'
+        } catch (err) {
+            error = err instanceof Error ? err.message : 'Failed to load orders';
+            showErrorAlert('Failed to load orders');
         }
-    ];
+    }
+    
+    function loadOrdersFromLocalStorage() {
+        if (browser) {
+            // Get pending orders from localStorage
+            const storedOrders = localStorage.getItem('pendingOrders');
+            if (storedOrders) {
+                try {
+                    const pendingOrders = JSON.parse(storedOrders) as OrderItem[];
+                    
+                    // Merge with existing orders, avoiding duplicates
+                    const existingIds = new Set(localOrders.map(order => order.id));
+                    const newOrders = pendingOrders.filter(order => !existingIds.has(order.id));
+                    
+                    localOrders = [...localOrders, ...newOrders];
+                } catch (err) {
+                    console.error('Error parsing orders from localStorage:', err);
+                }
+            }
+        }
+    }
+    
+    function updateOrdersInLocalStorage() {
+        if (browser) {
+            // Get the pending orders
+            const pendingOrders = localOrders.filter(order => order.status === 'pending');
+            // Save to localStorage
+            localStorage.setItem('pendingOrders', JSON.stringify(pendingOrders));
+        }
+    }
+    
+    onMount(() => {
+        // Check if user is authenticated
+        if (!$auth.user) {
+            goto('/login?redirect=/page-customer/profile/my-purchases');
+            return;
+        }
+        
+        // Check if we came from checkout
+        if (browser) {
+            fromCheckout = sessionStorage.getItem('fromCheckout') === 'true';
+            if (fromCheckout) {
+                sessionStorage.removeItem('fromCheckout');
+            }
+        }
+        
+        // Listen for search events from the layout
+        window.addEventListener('searchPurchases', ((event: CustomEvent) => {
+            searchQuery = event.detail.query;
+        }) as EventListener);
+        
+        loadOrders();
+        
+        return () => {
+            window.removeEventListener('searchPurchases', ((event: CustomEvent) => {}) as EventListener);
+        };
+    });
+    
+    // Combine orders from API and localStorage
+    $: combinedOrders = [...(Array.isArray(storeOrders) ? storeOrders : []), ...(Array.isArray(localOrders) ? localOrders : [])];
     
     // Filter orders based on active tab and search query
     $: filteredOrders = activeTab === 'All' 
-        ? orders.filter(order => 
+        ? combinedOrders.filter(order => 
             searchQuery.trim() === '' || 
             order.item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             order.seller.toLowerCase().includes(searchQuery.toLowerCase()))
-        : orders.filter(order => {
+        : combinedOrders.filter(order => {
             const status = activeTab.toLowerCase().replace(' ', '_');
             return order.status === status && 
                 (searchQuery.trim() === '' || 
@@ -145,62 +164,89 @@
     }
 
     function scrollTabs(direction: 'left' | 'right') {
-        const tabsContainer = document.querySelector('.tabs-scroll');
+        const tabsContainer = document.querySelector('.overflow-x-auto');
         if (tabsContainer) {
             const scrollAmount = 150;
             tabsContainer.scrollLeft += direction === 'left' ? -scrollAmount : scrollAmount;
         }
     }
 
+    // Show success alert
+    function showSuccessAlert(title: string, message: string = '') {
+        alertType = 'success';
+        alertTitle = title;
+        cartAdded = message;
+        showAlert = true;
+    }
+    
+    // Show error alert
+    function showErrorAlert(message: string, details: string = '') {
+        alertType = 'error';
+        alertTitle = 'Error';
+        cartAdded = details || message;
+        showAlert = true;
+    }
+
     // Order received function
-    function markOrderReceived(orderId: string) {
-        const orderIndex = orders.findIndex(o => o.id === orderId);
-        if (orderIndex !== -1) {
-            // Change order status to completed
-            orders[orderIndex].status = 'completed';
-            // Add the current date as the completed date
-            orders[orderIndex].date = new Date().toISOString().split('T')[0];
+    async function markOrderReceived(orderId: string) {
+        try {
+            // First try to update via API if it's a numeric ID (from the API)
+            if (!isNaN(Number(orderId))) {
+                await api.updateOrderStatus(Number(orderId), 'completed');
+                await orders.loadOrders();
+            } else {
+                // For localStorage orders
+                const orderIndex = localOrders.findIndex(o => o.id === orderId);
+                if (orderIndex !== -1) {
+                    // Change order status to completed
+                    localOrders[orderIndex].status = 'completed';
+                    // Add the current date as the completed date
+                    localOrders[orderIndex].date = new Date().toISOString().split('T')[0];
+                    
+                    // Update the localOrders array to trigger reactivity
+                    localOrders = [...localOrders];
+                    
+                    // Update localStorage with current orders
+                    updateOrdersInLocalStorage();
+                }
+            }
             
             // Show success alert
-            alertType = 'success';
-            alertTitle = 'Order Marked as Received';
-            showAlert = true;
+            showSuccessAlert('Order Marked as Received', 'Your order has been marked as received');
             
             // Switch to the completed tab after marking as received
             setActiveTab('Completed');
-            
-            // Update localStorage with current orders
-            updateOrdersInLocalStorage();
+        } catch (err) {
+            error = err instanceof Error ? err.message : 'Failed to update order status';
+            showErrorAlert('Failed to update order status');
         }
     }
 
     // Cancel order function
-    function cancelOrder(orderId: string) {
-        const orderIndex = orders.findIndex(o => o.id === orderId);
-        if (orderIndex !== -1) {
-            // Remove the order from the array
-            orders.splice(orderIndex, 1);
-            
-            // Show success alert
-            alertType = 'success';
-            alertTitle = 'Order Cancelled';
-            cartAdded = 'Order has been cancelled';
-            showAlert = true;
-            
-            // Ensure we're looking at the right tab
-            setActiveTab('Pending');
-            
-            // Update localStorage with current orders
-            updateOrdersInLocalStorage();
+    async function cancelOrder(orderId: string) {
+        try {
+            // For localStorage orders
+            const orderIndex = localOrders.findIndex(o => o.id === orderId);
+            if (orderIndex !== -1) {
+                // Remove the order from the array
+                localOrders.splice(orderIndex, 1);
+                
+                // Update the localOrders array to trigger reactivity
+                localOrders = [...localOrders];
+                
+                // Update localStorage with current orders
+                updateOrdersInLocalStorage();
+                
+                // Show success alert
+                showSuccessAlert('Order Cancelled', 'Order has been cancelled');
+                
+                // Ensure we're looking at the right tab
+                setActiveTab('Pending');
+            }
+        } catch (err) {
+            error = err instanceof Error ? err.message : 'Failed to cancel order';
+            showErrorAlert('Failed to cancel order');
         }
-    }
-    
-    // Function to update orders in localStorage
-    function updateOrdersInLocalStorage() {
-        // Get the pending orders
-        const pendingOrders = orders.filter(order => order.status === 'pending');
-        // Save to localStorage
-        localStorage.setItem('pendingOrders', JSON.stringify(pendingOrders));
     }
 
     // Review Modal
@@ -212,18 +258,12 @@
     let reviewImages: string[] = []; // Array to store the selected images
     let maxImages = 3; // Maximum number of images allowed
     
-    // Alert state
-    let showAlert = false;
-    let alertType: 'success' | 'delete-account' | 'delete-countdown' | 'review-success' | 'error' = 'review-success';
-    let alertTitle = 'Review Submitted';
-    let cartAdded = 'Order Completed';
-    
-    function openReviewModal(order: any) {
+    function openReviewModal(order: OrderItem) {
         selectedProduct = {
             id: Number(order.id), // Store the product ID
             name: order.item.name,
             image: order.item.image,
-            variation: 'Black' // Default variation for mock data
+            variation: 'Standard' // Default variation
         };
         selectedOrderId = order.id;
         rating = 5; // Default to 5 stars
@@ -264,15 +304,13 @@
 
     async function submitReview() {
         if (!selectedProduct || !reviewText) {
-            alertType = 'error';
-            alertTitle = 'Error';
-            showAlert = true;
+            showErrorAlert('Please provide a review text', 'You must enter review text before submitting');
             return;
         }
 
         try {
             // Create the review object
-            const review = {
+            const reviewData: ReviewData = {
                 product_id: selectedProduct.id,
                 user_id: $auth.user?.id || 1, // Default to 1 if not logged in
                 user_name: $auth.user?.name || 'John Doe',
@@ -282,34 +320,33 @@
                 images: reviewImages
             };
 
-            // Add the review to the store
-            await reviewStore.addReview(review);
+            // Add the review to the store - pass both itemId and reviewData
+            await reviews.addReview(selectedProduct.id, reviewData);
 
-            // Update the order to show it has been reviewed
-            const orderIndex = orders.findIndex(o => o.id === selectedOrderId);
+            // Update the local order to show it has been reviewed
+            const orderIndex = localOrders.findIndex(o => o.id === selectedOrderId);
             if (orderIndex !== -1) {
-                orders[orderIndex].review = {
+                localOrders[orderIndex].review = {
                     rating: rating,
                     text: reviewText,
                     date: new Date().toISOString().split('T')[0]
                 };
+                
+                // Update the localOrders array to trigger reactivity
+                localOrders = [...localOrders];
+                
+                // Update localStorage
+                updateOrdersInLocalStorage();
             }
 
             // Close the modal after submission
             closeReviewModal();
             
             // Show the success alert
-            alertType = 'review-success';
-            alertTitle = 'Review Submitted';
-            showAlert = true;
-            
-            // Update localStorage with the current orders
-            updateOrdersInLocalStorage();
-        } catch (error) {
-            console.error('Error submitting review:', error);
-            alertType = 'error';
-            alertTitle = 'Error Submitting Review';
-            showAlert = true;
+            showSuccessAlert('Review Submitted', 'Your review has been submitted successfully');
+        } catch (err) {
+            error = err instanceof Error ? err.message : 'Failed to submit review';
+            showErrorAlert('Failed to submit review', 'There was an error submitting your review');
         }
     }
     
@@ -321,179 +358,254 @@
         goto('/page-customer/home');
     }
 
-    onMount(() => {
-        // Load pending orders from localStorage
-        const storedOrders = localStorage.getItem('pendingOrders');
-        if (storedOrders) {
-            try {
-                const parsedOrders = JSON.parse(storedOrders);
-                
-                // Filter out any duplicate orders with the same ID
-                const existingOrderIds = new Set(orders.map(o => o.id));
-                const newOrders = parsedOrders.filter(o => !existingOrderIds.has(o.id));
-                
-                // Combine with existing orders
-                orders = [...orders, ...newOrders];
-            } catch (error) {
-                console.error('Error parsing orders from localStorage:', error);
-            }
-        }
-        
-        // Set the active tab to Pending if came from checkout
-        const fromCheckout = sessionStorage.getItem('fromCheckout');
-        if (fromCheckout === 'true') {
-            setActiveTab('Pending');
-            sessionStorage.removeItem('fromCheckout');
-        }
-        
-        // Listen for search events from the layout
-        window.addEventListener('searchPurchases', ((event: CustomEvent) => {
-            searchQuery = event.detail.query;
-        }) as EventListener);
-        
-        return () => {
-            window.removeEventListener('searchPurchases', ((event: CustomEvent) => {}) as EventListener);
-        };
-    });
+    
 </script>
 
-<CustomerSidebar />
 
-<div class="content">
-    <h1>My Purchases</h1>
+<div class="container mx-auto px-4 py-8 max-w-6xl">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">My Purchases</h1>
     
-    <div class="tabs-container">
-        <button class="scroll-btn left" on:click={() => scrollTabs('left')}>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-                <path fill="none" d="M0 0h24v24H0z"/>
-                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/>
+    <!-- Search Bar -->
+    <div class="mb-6">
+        <div class="relative">
+            <input 
+                type="text" 
+                bind:value={searchQuery} 
+                placeholder="Search orders by product or seller" 
+                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="relative mb-6 bg-white rounded-lg shadow overflow-hidden">
+        <div class="flex overflow-x-auto scrollbar-hide">
+            {#each tabs as tab}
+                <button 
+                    class="flex-shrink-0 px-6 py-3 text-sm font-medium transition-colors duration-200 ease-in-out
+                    ${activeTab === tab ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}"
+                    on:click={() => setActiveTab(tab)}
+                >
+                    {tab}
+                </button>
+            {/each}
+        </div>
+        
+        <!-- Tab Navigation Buttons (for mobile) -->
+        <button 
+            class="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-white to-transparent w-8 flex items-center justify-center z-10 md:hidden"
+            aria-label="Scroll tabs left" 
+            on:click={() => scrollTabs('left')}
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
         </button>
         
-        <div class="tabs-scroll">
-            <div class="tabs">
-                {#each tabs as tab}
-                    <button 
-                        class="tab-button {activeTab === tab ? 'active' : ''}" 
-                        on:click={() => setActiveTab(tab)}
-                    >
-                        {tab}
-                    </button>
-                {/each}
-            </div>
-        </div>
-        
-        <button class="scroll-btn right" on:click={() => scrollTabs('right')}>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-                <path fill="none" d="M0 0h24v24H0z"/>
-                <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="currentColor"/>
+        <button 
+            class="absolute right-0 top-0 bottom-0 bg-gradient-to-l from-white to-transparent w-8 flex items-center justify-center z-10 md:hidden"
+            aria-label="Scroll tabs right" 
+            on:click={() => scrollTabs('right')}
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
         </button>
     </div>
     
-    <div class="orders-container">
-        <div class="orders-section">
+    <!-- Loading State -->
+    {#if loading}
+        <div class="flex justify-center items-center py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+    {:else}
+        <!-- Orders List -->
+        <div class="space-y-4">
             {#if filteredOrders.length > 0}
                 {#each filteredOrders as order}
-                    <div class="order-card">
-                        <div class="order-header">
-                            <span class="order-date">Order placed: {order.date}</span>
-                            <span class="order-id">Order ID: {order.id}</span>
+                    <div class="bg-white rounded-lg shadow overflow-hidden transition-all duration-200 hover:shadow-md">
+                        <!-- Order Header -->
+                        <div class="bg-gray-50 px-4 py-3 flex flex-col sm:flex-row justify-between border-b">
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600">
+                                <span>Order placed: <span class="font-medium">{order.date}</span></span>
+                                <span class="hidden sm:block">•</span>
+                                <span>Order ID: <span class="font-medium">{order.id}</span></span>
+                            </div>
+                            <div class="mt-2 sm:mt-0">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                    ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                                    order.status === 'to_ship' ? 'bg-blue-100 text-blue-800' : 
+                                    order.status === 'to_receive' ? 'bg-purple-100 text-purple-800' : 
+                                    'bg-green-100 text-green-800'}"
+                                >
+                                    {order.status.replace('_', ' ').toUpperCase()}
+                                </span>
+                            </div>
                         </div>
                         
-                        <div class="order-content">
-                            <div class="order-item">
-                                <img src={order.item.image} alt={order.item.name} class="item-image" />
-                                <div class="item-details">
-                                    <h3>{order.item.name}</h3>
-                                    <p class="seller">Seller: {order.seller}</p>
-                                    <p class="price">${order.item.price.toFixed(2)} × {order.quantity}</p>
+                        <!-- Order Content -->
+                        <div class="p-4">
+                            <div class="flex flex-col md:flex-row items-start gap-4">
+                                <!-- Product Image -->
+                                <div class="w-24 h-24 flex-shrink-0">
+                                    <img 
+                                        src={order.item.image} 
+                                        alt="" 
+                                        class="w-full h-full object-cover rounded-md border border-gray-200"
+                                    />
                                 </div>
-                                <div class="item-status">
-                                    <span class="status-badge {order.status}">
-                                        {order.status.replace('_', ' ').toUpperCase()}
-                                    </span>
-                                    <p class="total-price">Total: ${order.total_price.toFixed(2)}</p>
+                                
+                                <!-- Product Details -->
+                                <div class="flex-grow">
+                                    <h3 class="text-lg font-medium text-gray-900">{order.item.name}</h3>
+                                    <p class="text-sm text-gray-500 mt-1">Seller: {order.seller}</p>
+                                    <p class="text-sm text-gray-700 mt-1">${order.item.price.toFixed(2)} × {order.quantity}</p>
+                                </div>
+                                
+                                <!-- Price -->
+                                <div class="mt-4 md:mt-0 text-right">
+                                    <p class="text-lg font-medium text-gray-900">Total: ${order.total_price.toFixed(2)}</p>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="order-actions">
+                        <!-- Order Actions -->
+                        <div class="px-4 py-3 bg-gray-50 border-t flex flex-wrap justify-end gap-3">
                             {#if order.status === 'completed'}
                                 {#if order.review}
-                                    <div class="review-box">
-                                        <div class="review-header">
-                                            <div class="star-display">
+                                    <!-- Review Display -->
+                                    <div class="w-full bg-gray-100 rounded-md p-3">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <div class="flex items-center">
                                                 {#each Array(5) as _, i}
-                                                    <span class="star {i < order.review.rating ? 'filled' : ''}">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
-                                                            <path fill="none" d="M0 0h24v24H0z"/>
-                                                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
-                                                        </svg>
-                                                    </span>
+                                                    <svg 
+                                                        xmlns="http://www.w3.org/2000/svg" 
+                                                        class="h-4 w-4 ${i < order.review.rating ? 'text-yellow-400' : 'text-gray-300'}"
+                                                        viewBox="0 0 20 20" 
+                                                        fill="currentColor"
+                                                    >
+                                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                    </svg>
                                                 {/each}
                                             </div>
-                                            <span class="review-date">Reviewed on {order.review.date}</span>
+                                            <span class="text-xs text-gray-500">Reviewed on {order.review.date}</span>
                                         </div>
-                                        <p class="review-text">{order.review.text}</p>
+                                        <p class="text-sm text-gray-700">{order.review.text}</p>
                                     </div>
                                 {:else}
-                                    <button class="rate-button" on:click={() => openReviewModal(order)}>Rate</button>
+                                    <button 
+                                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                        on:click={() => openReviewModal(order)}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                        </svg>
+                                        Write a Review
+                                    </button>
                                 {/if}
                             {/if}
                             {#if order.status === 'to_receive'}
-                                <button class="btn-action primary" on:click={() => markOrderReceived(order.id)}>Order Received</button>
+                                <button 
+                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                    on:click={() => markOrderReceived(order.id)}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Order Received
+                                </button>
                             {/if}
                             {#if order.status === 'pending'}
-                                <button class="btn-action cancel" on:click={() => cancelOrder(order.id)}>Cancel Order</button>
+                                <button 
+                                    class="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md shadow-sm text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                    on:click={() => cancelOrder(order.id)}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    Cancel Order
+                                </button>
                             {/if}
                         </div>
                     </div>
                 {/each}
             {:else}
-                <div class="empty-state">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
-                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                    </svg>
-                    <p>No orders found in this category</p>
-                    <button class="btn-primary" on:click={navigateToHome}>Start Shopping</button>
+                <!-- Empty State -->
+                <div class="bg-white rounded-lg shadow-sm p-8 text-center">
+                    <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">No orders found</h3>
+                    <p class="text-gray-500 mb-6">You don't have any orders in this category yet.</p>
+                    <button 
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        on:click={navigateToHome}
+                    >
+                        Start Shopping
+                    </button>
                 </div>
             {/if}
         </div>
-    </div>
+    {/if}
 </div>
 
 <!-- Review Modal -->
 {#if showReviewModal && selectedProduct}
-<div class="modal-overlay">
-    <div class="modal-container">
-        <div class="modal-content">
-            <h2>Rate Product</h2>
+<div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Rate Product</h2>
+                <button 
+                    class="text-gray-500 hover:text-gray-700 focus:outline-none" 
+                    on:click={closeReviewModal}
+                    aria-label="Close modal"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
             
-            <div class="product-info">
-                <img src={selectedProduct.image} alt={selectedProduct.name} class="product-image" />
-                <div class="product-details">
-                    <h3>{selectedProduct.name}</h3>
-                    <p>Variation: {selectedProduct.variation}</p>
+            <div class="flex items-center space-x-4 mb-6 p-3 bg-gray-50 rounded-lg">
+                <img 
+                    src={selectedProduct.image} 
+                    alt="" 
+                    class="w-16 h-16 object-cover rounded-md border border-gray-200" 
+                />
+                <div>
+                    <h3 class="font-medium text-gray-900">{selectedProduct.name}</h3>
+                    <p class="text-sm text-gray-500">Variation: {selectedProduct.variation}</p>
                 </div>
             </div>
             
-            <div class="rating-section">
-                <p>Product Quality</p>
-                <div class="star-rating">
+            <div class="mb-6">
+                <p class="font-medium text-gray-700 mb-2">Product Quality</p>
+                <div class="flex items-center space-x-2">
                     {#each Array(5) as _, i}
                         <button 
-                            class="star-btn {i < rating ? 'active' : ''}" 
+                            class="focus:outline-none transition-colors duration-150"
                             on:click={() => rating = i + 1}
+                            aria-label="Rate {i + 1} stars"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-                                <path fill="none" d="M0 0h24v24H0z"/>
-                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
+                            <svg 
+                                xmlns="http://www.w3.org/2000/svg" 
+                                class="h-8 w-8 {i < rating ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-400"
+                                viewBox="0 0 20 20" 
+                                fill="currentColor"
+                            >
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                             </svg>
                         </button>
-                        {/each}
-                        <span class="rating-text">
+                    {/each}
+                    <span class="ml-2 text-sm font-medium text-gray-700">
                         {#if rating === 1}Poor
                         {:else if rating === 2}Fair
                         {:else if rating === 3}Good
@@ -504,48 +616,60 @@
                 </div>
             </div>
             
-            <div class="review-input">
+            <div class="mb-6">
+                <label for="review-text" class="block text-sm font-medium text-gray-700 mb-2">Your Review</label>
                 <textarea 
+                    id="review-text"
                     bind:value={reviewText} 
                     placeholder="Share your thoughts on the product to help other buyers."
-                    rows="6"
+                    rows="4"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 ></textarea>
             </div>
             
             <!-- Image Upload Section -->
-            <div class="image-upload-section">
-                <p>Add Photos (Optional)</p>
-                <div class="image-preview-container">
+            <div class="mb-6">
+                <p class="block text-sm font-medium text-gray-700 mb-2">Add Photos (Optional)</p>
+                <div class="flex flex-wrap gap-2 mb-2">
                     {#each reviewImages as image, index}
-                        <div class="image-preview">
-                            <img src={image} alt="Review image" />
-                            <button class="remove-image-btn" on:click={() => removeImage(index)}>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
-                                    <path fill="none" d="M0 0h24v24H0z"/>
-                                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
-                                </svg>
+                        <div class="relative w-20 h-20 border border-gray-200 rounded-md overflow-hidden group">
+                            <img src={image} alt="" class="w-full h-full object-cover" />
+                            <button 
+                                class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-md opacity-80 hover:opacity-100 focus:outline-none"
+                                on:click={() => removeImage(index)}
+                                aria-label="Remove image"
+                            >
+                                ×
                             </button>
                         </div>
                     {/each}
                     
                     {#if reviewImages.length < maxImages}
-                        <label class="upload-btn">
-                            <input type="file" accept="image/*" on:change={handleImageSelection} />
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                <circle cx="8.5" cy="8.5" r="1.5" />
-                                <polyline points="21 15 16 10 5 21" />
+                        <label class="w-20 h-20 border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors duration-150">
+                            <input type="file" accept="image/*" on:change={handleImageSelection} class="hidden" />
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                             </svg>
-                            <span>Add Photo</span>
+                            <span class="text-xs text-gray-500 mt-1">Add Photo</span>
                         </label>
                     {/if}
                 </div>
-                <p class="image-limit-text">{reviewImages.length} of {maxImages} photos</p>
+                <p class="text-xs text-gray-500">{reviewImages.length} of {maxImages} photos</p>
             </div>
             
-            <div class="modal-buttons">
-                <button class="btn-cancel" on:click={closeReviewModal}>Cancel</button>
-                <button class="btn-submit" on:click={submitReview}>Submit</button>
+            <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                <button 
+                    class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    on:click={closeReviewModal}
+                >
+                    Cancel
+                </button>
+                <button 
+                    class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    on:click={submitReview}
+                >
+                    Submit Review
+                </button>
             </div>
         </div>
     </div>
@@ -561,561 +685,4 @@
     on:close={closeAlert}
 />
 
-<style>
-    .content {
-        margin-left: 220px;
-        padding: 2rem;
-    }
-
-    h1 {
-        color: #2b4b66;
-        margin-bottom: 1.5rem;
-    }
-    
-    .tabs-container {
-        display: flex;
-        align-items: center;
-        margin-bottom: 2rem;
-        position: relative;
-        background-color: white;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-    
-    .tabs-scroll {
-        overflow-x: auto;
-        scrollbar-width: none; /* Firefox */
-        -ms-overflow-style: none; /* IE/Edge */
-        width: 100%;
-    }
-    
-    .tabs-scroll::-webkit-scrollbar {
-        display: none; /* Chrome, Safari, Opera */
-    }
-    
-    .tabs {
-        display: flex;
-        border-bottom: 1px solid #e0e0e0;
-        width: 100%;
-        background-color: white;
-    }
-    
-    .tab-button {
-        padding: 0.75rem 0;
-        background: none;
-        border: none;
-        cursor: pointer;
-        font-size: 1rem;
-        color: #555;
-        position: relative;
-        flex: 1;
-        text-align: center;
-        min-width: max-content;
-    }
-    
-    .tab-button.active {
-        color: #2b4b66;
-        font-weight: 600;
-    }
-    
-    .tab-button.active::after {
-        content: '';
-        position: absolute;
-        bottom: -1px;
-        left: 0;
-        width: 100%;
-        height: 3px;
-        background-color: #2b4b66;
-    }
-    
-    .scroll-btn {
-        display: none;
-        background: #fff;
-        border: 1px solid #e0e0e0;
-        border-radius: 50%;
-        width: 36px;
-        height: 36px;
-        cursor: pointer;
-        align-items: center;
-        justify-content: center;
-        position: absolute;
-        z-index: 1;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .scroll-btn.left {
-        left: -8px;
-    }
-    
-    .scroll-btn.right {
-        right: -8px;
-    }
-    
-    .orders-container {
-        min-height: 300px;
-    }
-    
-    .orders-section {
-        background-color: #fff;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        padding: 1.5rem;
-    }
-
-    /* Order card styles */
-    .order-card {
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        margin-bottom: 1.5rem;
-        overflow: hidden;
-    }
-    
-    .order-header {
-        background-color: #f5f7f9;
-        padding: 0.75rem 1rem;
-        display: flex;
-        justify-content: space-between;
-        font-size: 0.9rem;
-        color: #555;
-        border-bottom: 1px solid #e0e0e0;
-    }
-    
-    .order-content {
-        padding: 1rem;
-    }
-    
-    .order-item {
-        display: flex;
-        align-items: center;
-        padding: 0.5rem 0;
-    }
-    
-    .item-image {
-        width: 80px;
-        height: 80px;
-        object-fit: cover;
-        border-radius: 4px;
-        border: 1px solid #eee;
-    }
-    
-    .item-details {
-        flex: 1;
-        padding: 0 1rem;
-    }
-    
-    .item-details h3 {
-        margin: 0 0 0.25rem 0;
-        font-size: 1.1rem;
-        color: #333;
-    }
-    
-    .seller {
-        color: #777;
-        font-size: 0.9rem;
-        margin: 0.25rem 0;
-    }
-    
-    .price {
-        font-size: 0.9rem;
-        color: #444;
-        margin: 0.25rem 0;
-    }
-    
-    .item-status {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        min-width: 120px;
-    }
-    
-    .status-badge {
-        padding: 0.35rem 0.75rem;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        margin-bottom: 0.5rem;
-    }
-    
-    .status-badge.pending {
-        background-color: #fff8e1;
-        color: #f57c00;
-    }
-    
-    .status-badge.to_ship {
-        background-color: #e3f2fd;
-        color: #1976d2;
-    }
-    
-    .status-badge.to_receive {
-        background-color: #e8f5e9;
-        color: #388e3c;
-    }
-    
-    .status-badge.completed {
-        background-color: #f5f5f5;
-        color: #616161;
-    }
-    
-    .total-price {
-        font-weight: 600;
-        color: #222;
-        font-size: 1rem;
-        margin: 0.25rem 0;
-    }
-    
-    .order-actions {
-        display: flex;
-        justify-content: flex-end;
-        padding: 0.75rem 1rem;
-        background-color: #fafafa;
-        border-top: 1px solid #eee;
-        gap: 0.75rem;
-    }
-    
-    .btn-action {
-        padding: 0.5rem 1rem;
-        background-color: #f5f5f5;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-weight: 500;
-        cursor: pointer;
-        color: #444;
-        transition: all 0.2s;
-    }
-    
-    .btn-action:hover {
-        background-color: #eee;
-    }
-    
-    .btn-action.primary {
-        background-color: #789DBC;
-        color: white;
-        border-color: #789DBC;
-    }
-    
-    .btn-action.primary:hover {
-        background-color: #1e3a52;
-    }
-    
-    .btn-action.cancel {
-        background-color: #fff;
-        color: #e53935;
-        border-color: #e53935;
-    }
-    
-    .btn-action.cancel:hover {
-        background-color: #789DBC;
-    }
-    
-    /* Empty state */
-    .empty-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 3rem 1rem;
-        color: #888;
-    }
-    
-    .empty-state svg {
-        color: #bbb;
-        margin-bottom: 1rem;
-    }
-    
-    .empty-state p {
-        margin-bottom: 1.5rem;
-        font-size: 1.1rem;
-    }
-    
-    .btn-primary {
-        padding: 0.75rem 1.5rem;
-        background-color: #789DBC;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        font-weight: 500;
-        cursor: pointer;
-    }
-    
-    .btn-primary:hover {
-        background-color: #1e3a52;
-    }
-
-    /* Review Modal Styles */
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-    }
-    
-    .modal-container {
-        width: 90%;
-        max-width: 500px;
-        max-height: 90vh;
-        overflow-y: auto;
-        background-color: white;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-    
-    .modal-content {
-        padding: 1.5rem;
-    }
-    
-    .modal-content h2 {
-        color: #333;
-        margin-top: 0;
-        margin-bottom: 1.5rem;
-        text-align: center;
-    }
-    
-    .product-info {
-        display: flex;
-        align-items: center;
-        margin-bottom: 1.5rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid #eee;
-    }
-    
-    .product-image {
-        width: 80px;
-        height: 80px;
-        object-fit: cover;
-        border-radius: 4px;
-        margin-right: 1rem;
-    }
-    
-    .product-details h3 {
-        margin: 0 0 0.25rem;
-        font-size: 1.1rem;
-    }
-    
-    .product-details p {
-        color: #777;
-        margin: 0;
-    }
-    
-    .rating-section {
-        margin-bottom: 1.5rem;
-    }
-    
-    .rating-section p {
-        font-weight: 500;
-        margin-bottom: 0.5rem;
-    }
-    
-    .star-rating {
-        display: flex;
-        align-items: center;
-    }
-    
-    .star-btn {
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 0;
-        color: #ddd;
-        transition: color 0.2s;
-        margin-right: 0.25rem;
-    }
-    
-    .star-btn.active {
-        color: #ffb400;
-    }
-    
-    .rating-text {
-        margin-left: 0.75rem;
-        font-weight: 500;
-        color: #ffb400;
-    }
-    
-    .review-input {
-        margin-bottom: 1.5rem;
-    }
-    
-    .review-input textarea {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        resize: vertical;
-        font-family: inherit;
-        font-size: 0.95rem;
-    }
-    
-    .modal-buttons {
-        display: flex;
-        justify-content: flex-end;
-        gap: 1rem;
-    }
-    
-    .btn-cancel {
-        padding: 0.6rem 1.2rem;
-        background-color: #f5f5f5;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-weight: 500;
-        cursor: pointer;
-        color: #555;
-    }
-    
-    .btn-submit {
-        padding: 0.6rem 1.2rem;
-        background-color: #789DBC;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        font-weight: 500;
-        cursor: pointer;
-    }
-    
-    .btn-submit:hover {
-        background-color: #1e3a52;
-    }
-
-    .rate-button {
-        background-color: #789DBC;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 0.5rem 1.5rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-    
-    .rate-button:hover {
-        background-color: #1e3a52;
-    }
-
-    .review-box {
-        background-color: #f9f9f9;
-        border: 1px solid #eee;
-        border-radius: 6px;
-        padding: 0.75rem;
-        margin-top: 0.5rem;
-        font-size: 0.9rem;
-    }
-
-    .review-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.5rem;
-    }
-
-    .star-display {
-        display: flex;
-    }
-
-    .star {
-        color: #ddd;
-        margin-right: 2px;
-    }
-
-    .star.filled {
-        color: #ffb400;
-    }
-
-    .review-date {
-        font-size: 0.8rem;
-        color: #777;
-    }
-
-    .review-text {
-        margin: 0;
-        color: #555;
-        line-height: 1.4;
-    }
-
-    /* Image Upload Styles */
-    .image-upload-section {
-        margin-bottom: 1.5rem;
-    }
-    
-    .image-upload-section p {
-        font-weight: 500;
-        margin-bottom: 0.5rem;
-    }
-    
-    .image-preview-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .image-preview {
-        position: relative;
-        width: 80px;
-        height: 80px;
-        border-radius: 4px;
-        overflow: hidden;
-        border: 1px solid #ddd;
-    }
-    
-    .image-preview img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-    
-    .remove-image-btn {
-        position: absolute;
-        top: 0;
-        right: 0;
-        background-color: rgba(0, 0, 0, 0.5);
-        color: white;
-        border: none;
-        width: 20px;
-        height: 20px;
-        border-radius: 0 0 0 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-    }
-    
-    .upload-btn {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        width: 80px;
-        height: 80px;
-        border: 1px dashed #bbb;
-        border-radius: 4px;
-        cursor: pointer;
-        color: #777;
-        background-color: #f9f9f9;
-        transition: all 0.2s;
-    }
-    
-    .upload-btn:hover {
-        border-color: #999;
-        background-color: #f5f5f5;
-    }
-    
-    .upload-btn input[type="file"] {
-        display: none;
-    }
-    
-    .upload-btn span {
-        font-size: 0.75rem;
-        margin-top: 0.25rem;
-    }
-    
-    .image-limit-text {
-        font-size: 0.8rem;
-        color: #777;
-        margin-top: 0.25rem;
-    }
-</style>
+<!-- Using Tailwind CSS, no custom styles needed -->
