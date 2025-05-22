@@ -511,6 +511,24 @@ export const api = {
         });
     },
 
+    getAllBusinesses: async (params?: { status?: string; search?: string; sort_by?: string; sort_order?: string; per_page?: number; page?: number }): Promise<any> => {
+        let queryParams = '';
+        
+        if (params) {
+            const queryParts = [];
+            for (const [key, value] of Object.entries(params)) {
+                if (value !== undefined) {
+                    queryParts.push(`${key}=${encodeURIComponent(value)}`);
+                }
+            }
+            if (queryParts.length > 0) {
+                queryParams = `?${queryParts.join('&')}`;
+            }
+        }
+        
+        return fetchApi<any>(`admin/businesses${queryParams}`);
+    },
+    
     getPendingBusinesses: async (): Promise<any[]> => {
         return fetchApi<any[]>('admin/businesses/pending');
     },

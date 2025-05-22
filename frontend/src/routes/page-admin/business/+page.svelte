@@ -8,75 +8,74 @@
     let sortBy = $state('Date');
     let showPerPage = $state('5');
     
-    // Filter and sort businesses based on selected criteria
-    let filteredBusinesses = $state<any[]>([]);
-    
-    // Update filtered businesses whenever dependencies change
-    $effect(() => {
-        if (!$admin.pendingBusinesses || $admin.pendingBusinesses.length === 0) {
-            filteredBusinesses = [];
-            return;
-        }
-        
-        // First filter by search query
-        let result = $admin.pendingBusinesses.filter(business => {
-            if (!searchQuery) return true;
-            
-            const query = searchQuery.toLowerCase();
-            return (
-                business.name?.toLowerCase().includes(query) ||
-                business.user?.name?.toLowerCase().includes(query) ||
-                business.id?.toString().includes(query)
-            );
-        });
-        
-        // Then filter by status if needed
-        if (statusFilter !== 'All') {
-            result = result.filter(business => {
-                if (statusFilter === 'Pending') {
-                    return business.status === 'pending' || !business.status;
-                } else if (statusFilter === 'Approved') {
-                    return business.status === 'approved';
-                } else if (statusFilter === 'Rejected') {
-                    return business.status === 'rejected';
-                }
-                return true;
-            });
-        }
-        
-        // Sort businesses based on selected criteria
-        filteredBusinesses = result.sort((a:any, b:any) => {
-            switch (sortBy) {
-                case 'ID':
-                    return a.id - b.id;
-                case 'Name':
-                    return a.name.localeCompare(b.name);
-                case 'Owner':
-                    return a.user?.name.localeCompare(b.user?.name);
-                case 'Date':
-                    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-                default:
-                    return 0;
-            }
-        });
-    });
-    
-    // Pagination
-    let perPage = $state(parseInt(showPerPage));
+    // Pagination state for server-side pagination
+    let totalItems = $state(0);
     let totalPages = $state(1);
     let currentPage = $state(1);
+    let perPage = $state(parseInt(showPerPage));
     
-    // Update pagination variables when dependencies change
+    // Store filtered businesses
+    let filteredBusinesses = $state<any[]>([]);
+    
+    // Load businesses with filters
+    async function loadBusinesses() {
+        try {
+            // Convert UI filter values to API parameters
+            const status = statusFilter === 'All' ? undefined : statusFilter.toLowerCase();
+            const search = searchQuery || undefined;
+            const sort_by = getSortField(sortBy);
+            const sort_order = getSortOrder(sortBy);
+            
+            // Call the API with filters
+            const response = await admin.loadAllBusinesses({
+                status,
+                search,
+                sort_by,
+                sort_order,
+                per_page: perPage,
+                page: currentPage
+            });
+            
+            // Update pagination info from response
+            totalItems = response.total;
+            totalPages = response.last_page;
+            
+            // Update filtered businesses
+            filteredBusinesses = $admin.allBusinesses;
+        } catch (error) {
+            console.error('Error loading businesses:', error);
+        }
+    }
+    
+    // Helper functions for sorting
+    function getSortField(uiSortBy: string): string {
+        switch (uiSortBy) {
+            case 'ID': return 'id';
+            case 'Name': return 'name';
+            case 'Date': return 'created_at';
+            default: return 'created_at';
+        }
+    }
+    
+    function getSortOrder(uiSortBy: string): string {
+        // For date, we want newest first
+        if (uiSortBy === 'Date') return 'desc';
+        // For everything else, ascending order
+        return 'asc';
+    }
+    
+    // Update perPage when showPerPage changes
     $effect(() => {
         perPage = parseInt(showPerPage);
-        totalPages = Math.ceil(filteredBusinesses.length / perPage);
+        // Reload businesses when page size changes
+        loadBusinesses();
     });
     
-    // Get current page businesses
-    let paginatedBusinesses = $state<any[]>([]);
+    // Watch for filter changes to reload businesses
     $effect(() => {
-        const startIndex = (currentPage - 1) * perPage;
-        paginatedBusinesses = filteredBusinesses.slice(startIndex, startIndex + perPage);
+        // These dependencies will trigger a reload
+        const _ = [statusFilter, searchQuery, sortBy, currentPage];
+        loadBusinesses();
     });
     
     // For approval/rejection modal
@@ -87,7 +86,7 @@
     
     // Fetch businesses on component mount
     onMount(() => {
-        admin.loadPendingBusinesses();
+        loadBusinesses();
     });
     
     function openApprovalModal(business: any) {
@@ -270,7 +269,7 @@
                                 No businesses found matching your criteria
                             </div>
                         {:else}
-                            {#each paginatedBusinesses as business (business.id)}
+                            {#each filteredBusinesses as business (business.id)}
                                 <div class="grid grid-cols-7 gap-4 p-4 border-b border-gray-200 hover:bg-gray-50">
                                     <div class="text-sm text-gray-600">{business.id}</div>
                                     <div class="text-sm text-gray-600">{business.name || 'N/A'}</div>
@@ -309,7 +308,7 @@
                     {#if filteredBusinesses.length > 0 && totalPages > 1}
                         <div class="flex justify-between items-center mt-4 px-4">
                             <div class="text-sm text-gray-500">
-                                Showing {(currentPage - 1) * perPage + 1} to {Math.min(currentPage * perPage, filteredBusinesses.length)} of {filteredBusinesses.length} businesses
+                                Showing {(currentPage - 1) * perPage + 1} to {Math.min(currentPage * perPage, totalItems)} of {totalItems} businesses
                             </div>
                             <div class="flex gap-2">
                                 <button 

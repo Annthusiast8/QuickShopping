@@ -70,6 +70,7 @@ export interface ApiPendingBusinessesResponse {
 interface AdminState {
     users: User[];
     pendingBusinesses: Business[];
+    allBusinesses: Business[];
     reports: any[];
     loading: boolean;
     error: string | null;
@@ -79,6 +80,7 @@ function createAdminStore() {
     const { subscribe, set, update } = writable<AdminState>({
         users: [],
         pendingBusinesses: [],
+        allBusinesses: [],
         reports: [],
         loading: false,
         error: null
@@ -144,15 +146,15 @@ function createAdminStore() {
                 throw error;
             }
         },
-        loadPendingBusinesses: async () => {
+        loadAllBusinesses: async (params?: { status?: string; search?: string; sort_by?: string; sort_order?: string; per_page?: number; page?: number }) => {
             update(state => ({ ...state, loading: true, error: null }));
             try {
-                // First cast to unknown then to our interface to avoid TypeScript errors
-                const response = await api.getPendingBusinesses() as unknown as ApiPendingBusinessesResponse;
+                // Get all businesses with optional filtering
+                const response = await api.getAllBusinesses(params) as unknown as ApiPendingBusinessesResponse;
                 // Handle paginated response - extract the data array
                 const businesses = response.data || [];
                 
-                // Map the businesses to include status based on is_approved
+                // Map the businesses to include status
                 const mappedBusinesses = businesses.map((business: any) => {
                     const status = business.is_approved === 1 ? 'approved' : 
                                   business.rejection_reason ? 'rejected' : 'pending';
@@ -162,7 +164,38 @@ function createAdminStore() {
                     } as Business;
                 });
                 
-                console.log('Loaded businesses:', mappedBusinesses);
+                console.log('Loaded all businesses:', mappedBusinesses);
+                update(state => ({ ...state, allBusinesses: mappedBusinesses, loading: false }));
+                return response; // Return full response with pagination info
+            } catch (error) {
+                console.error('Failed to load businesses:', error);
+                update(state => ({
+                    ...state,
+                    loading: false,
+                    error: error instanceof Error ? error.message : 'Failed to load businesses'
+                }));
+                throw error;
+            }
+        },
+        loadPendingBusinesses: async () => {
+            update(state => ({ ...state, loading: true, error: null }));
+            try {
+                // First cast to unknown then to our interface to avoid TypeScript errors
+                const response = await api.getPendingBusinesses() as unknown as ApiPendingBusinessesResponse;
+                // Handle paginated response - extract the data array
+                const businesses = response.data || [];
+                
+                // Map the businesses to include status
+                const mappedBusinesses = businesses.map((business: any) => {
+                    const status = business.is_approved === 1 ? 'approved' : 
+                                  business.rejection_reason ? 'rejected' : 'pending';
+                    return {
+                        ...business,
+                        status: status as 'pending' | 'approved' | 'rejected'
+                    } as Business;
+                });
+                
+                console.log('Loaded pending businesses:', mappedBusinesses);
                 update(state => ({ ...state, pendingBusinesses: mappedBusinesses, loading: false }));
                 return mappedBusinesses;
             } catch (error) {
@@ -275,6 +308,7 @@ function createAdminStore() {
             set({
                 users: [],
                 pendingBusinesses: [],
+                allBusinesses: [],
                 reports: [],
                 loading: false,
                 error: null

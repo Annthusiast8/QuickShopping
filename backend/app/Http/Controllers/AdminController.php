@@ -159,4 +159,58 @@ class AdminController extends Controller
             'shop' => $shop->load('user')
         ]);
     }
+    
+    /**
+     * Get all businesses with optional filtering
+     */
+    public function getAllBusinesses(Request $request)
+    {
+        // Start with a base query
+        $query = Shop::with('user');
+        
+        // Apply filters if provided
+        if ($request->has('status')) {
+            $status = $request->status;
+            
+            if ($status === 'approved') {
+                $query->where('is_approved', true);
+            } elseif ($status === 'rejected') {
+                $query->where('is_approved', false)
+                      ->whereNotNull('rejection_reason');
+            } elseif ($status === 'pending') {
+                $query->where('is_approved', false)
+                      ->whereNull('rejection_reason');
+            }
+        }
+        
+        // Apply search if provided
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%")
+                  ->orWhereHas('user', function($userQuery) use ($search) {
+                      $userQuery->where('name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
+                  });
+            });
+        }
+        
+        // Apply sorting
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortOrder = $request->input('sort_order', 'desc');
+        
+        // Validate sort parameters
+        $allowedSortFields = ['id', 'name', 'created_at', 'is_approved'];
+        $sortBy = in_array($sortBy, $allowedSortFields) ? $sortBy : 'created_at';
+        $sortOrder = in_array($sortOrder, ['asc', 'desc']) ? $sortOrder : 'desc';
+        
+        $query->orderBy($sortBy, $sortOrder);
+        
+        // Get paginated results
+        $perPage = $request->input('per_page', 10);
+        $businesses = $query->paginate($perPage);
+        
+        return response()->json($businesses);
+    }
 }

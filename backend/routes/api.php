@@ -29,7 +29,8 @@ Route::prefix('admin')
         Route::put('/users/{userId}/role', 'updateUserRole');
         Route::delete('/users/{userId}', 'deleteUser');
         
-        // Business approval
+        // Business management
+        Route::get('/businesses', 'getAllBusinesses');
         Route::get('/businesses/pending', 'getPendingBusinesses');
         Route::put('/businesses/{shopId}/approve', 'approveBusinessProfile');
         Route::put('/businesses/{shopId}/reject', 'rejectBusinessProfile');
