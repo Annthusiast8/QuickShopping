@@ -45,7 +45,7 @@
         }
         
         // Sort businesses based on selected criteria
-        filteredBusinesses = result.sort((a, b) => {
+        filteredBusinesses = result.sort((a:any, b:any) => {
             switch (sortBy) {
                 case 'ID':
                     return a.id - b.id;

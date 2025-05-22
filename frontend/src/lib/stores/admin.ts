@@ -1,6 +1,23 @@
 import { writable } from 'svelte/store';
 import { api } from '../services/api';
 
+// Interface for paginated response from API
+interface PaginatedResponse<T> {
+    current_page: number;
+    data: T[];
+    first_page_url: string;
+    from: number;
+    last_page: number;
+    last_page_url: string;
+    links: Array<{ url: string | null; label: string; active: boolean }>;
+    next_page_url: string | null;
+    path: string;
+    per_page: number;
+    prev_page_url: string | null;
+    to: number;
+    total: number;
+}
+
 export interface User {
     id: number;
     name: string;
@@ -13,9 +30,46 @@ export interface User {
     };
 }
 
+export interface Business {
+    id: number;
+    user_id: number;
+    name: string;
+    description: string | null;
+    logo_url: string | null;
+    contact_email: string | null;
+    contact_phone: string | null;
+    address: string | null;
+    is_active: number;
+    is_approved: number;
+    approval_date: string | null;
+    approved_by: number | null;
+    rejection_reason: string | null;
+    created_at: string;
+    updated_at: string | null;
+    user?: User;
+    status?: 'pending' | 'approved' | 'rejected';
+}
+
+// API response might return any type, so we need a more flexible interface for the API call
+export interface ApiPendingBusinessesResponse {
+    current_page: number;
+    data: any[];
+    first_page_url: string;
+    from: number;
+    last_page: number;
+    last_page_url: string;
+    links: Array<{ url: string | null; label: string; active: boolean }>;
+    next_page_url: string | null;
+    path: string;
+    per_page: number;
+    prev_page_url: string | null;
+    to: number;
+    total: number;
+}
+
 interface AdminState {
     users: User[];
-    pendingBusinesses: any[];
+    pendingBusinesses: Business[];
     reports: any[];
     loading: boolean;
     error: string | null;
@@ -93,10 +147,26 @@ function createAdminStore() {
         loadPendingBusinesses: async () => {
             update(state => ({ ...state, loading: true, error: null }));
             try {
-                const businesses = await api.getPendingBusinesses();
-                update(state => ({ ...state, pendingBusinesses: businesses, loading: false }));
-                return businesses;
+                // First cast to unknown then to our interface to avoid TypeScript errors
+                const response = await api.getPendingBusinesses() as unknown as ApiPendingBusinessesResponse;
+                // Handle paginated response - extract the data array
+                const businesses = response.data || [];
+                
+                // Map the businesses to include status based on is_approved
+                const mappedBusinesses = businesses.map((business: any) => {
+                    const status = business.is_approved === 1 ? 'approved' : 
+                                  business.rejection_reason ? 'rejected' : 'pending';
+                    return {
+                        ...business,
+                        status: status as 'pending' | 'approved' | 'rejected'
+                    } as Business;
+                });
+                
+                console.log('Loaded businesses:', mappedBusinesses);
+                update(state => ({ ...state, pendingBusinesses: mappedBusinesses, loading: false }));
+                return mappedBusinesses;
             } catch (error) {
+                console.error('Failed to load pending businesses:', error);
                 update(state => ({
                     ...state,
                     loading: false,
@@ -109,10 +179,25 @@ function createAdminStore() {
             update(state => ({ ...state, loading: true, error: null }));
             try {
                 const response = await api.approveBusiness(shopId);
-                const businesses = await api.getPendingBusinesses();
-                update(state => ({ ...state, pendingBusinesses: businesses, loading: false }));
+                
+                // Reload businesses with updated data
+                const businessesResponse = await api.getPendingBusinesses() as unknown as ApiPendingBusinessesResponse;
+                const businesses = businessesResponse.data || [];
+                
+                // Map the businesses to include status
+                const mappedBusinesses = businesses.map((business: any) => {
+                    const status = business.is_approved === 1 ? 'approved' : 
+                                  business.rejection_reason ? 'rejected' : 'pending';
+                    return {
+                        ...business,
+                        status: status as 'pending' | 'approved' | 'rejected'
+                    } as Business;
+                });
+                
+                update(state => ({ ...state, pendingBusinesses: mappedBusinesses, loading: false }));
                 return response;
             } catch (error) {
+                console.error('Failed to approve business:', error);
                 update(state => ({
                     ...state,
                     loading: false,
@@ -125,10 +210,25 @@ function createAdminStore() {
             update(state => ({ ...state, loading: true, error: null }));
             try {
                 const response = await api.rejectBusiness(shopId, rejectionReason);
-                const businesses = await api.getPendingBusinesses();
-                update(state => ({ ...state, pendingBusinesses: businesses, loading: false }));
+                
+                // Reload businesses with updated data
+                const businessesResponse = await api.getPendingBusinesses() as unknown as ApiPendingBusinessesResponse;
+                const businesses = businessesResponse.data || [];
+                
+                // Map the businesses to include status
+                const mappedBusinesses = businesses.map((business: any) => {
+                    const status = business.is_approved === 1 ? 'approved' : 
+                                  business.rejection_reason ? 'rejected' : 'pending';
+                    return {
+                        ...business,
+                        status: status as 'pending' | 'approved' | 'rejected'
+                    } as Business;
+                });
+                
+                update(state => ({ ...state, pendingBusinesses: mappedBusinesses, loading: false }));
                 return response;
             } catch (error) {
+                console.error('Failed to reject business:', error);
                 update(state => ({
                     ...state,
                     loading: false,

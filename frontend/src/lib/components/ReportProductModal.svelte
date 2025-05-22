@@ -99,11 +99,11 @@
 </script>
 
 {#if isOpen}
-  <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+  <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" role="dialog" tabindex="0" aria-modal="true" aria-labelledby="report-modal-title" on:keydown={(e) => e.key === 'Escape' && closeModal()}>
     <div class="bg-white rounded-lg w-full max-w-md overflow-hidden shadow-xl">
       <!-- Header -->
       <div class="flex justify-between items-center border-b border-gray-200 p-4">
-        <h3 class="text-lg font-semibold text-gray-800">Report Product</h3>
+        <h3 id="report-modal-title" class="text-lg font-semibold text-gray-800">Report Product</h3>
         <button 
           on:click={closeModal} 
           class="text-gray-500 hover:text-gray-700 transition-colors"
@@ -124,13 +124,17 @@
         
         <!-- Reason selection -->
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Select a reason:</label>
-          <div class="space-y-1 max-h-48 overflow-y-auto">
+          <label id="reason-group-label" class="block text-sm font-medium text-gray-700 mb-2">Select a reason:</label>
+          <div class="space-y-1 max-h-48 overflow-y-auto" role="radiogroup" aria-labelledby="reason-group-label">
             {#each reportReasons as reason}
               <div 
                 class="p-3 border rounded-md cursor-pointer transition-colors
                   {selectedReason === reason ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50 border-gray-200'}"
                 on:click={() => selectedReason = reason}
+                on:keydown={(e) => e.key === 'Enter' && (selectedReason = reason)}
+                role="radio"
+                aria-checked={selectedReason === reason}
+                tabindex="0"
               >
                 {reason}
               </div>

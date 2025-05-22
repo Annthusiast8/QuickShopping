@@ -169,7 +169,9 @@
     <div 
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
         on:click={handleBackdropClick}
+        on:keydown={(e) => e.key === 'Escape' && closeModal()}
         role="dialog"
+        tabindex="0"
         aria-modal="true"
         aria-labelledby="modal-title"
     >
@@ -226,12 +228,14 @@
                 <h3 class="block text-sm font-medium text-gray-700 mb-2">Variation</h3>
                 
                 <div class="mb-3">
-                    <label class="block text-xs text-gray-500 mb-1">Color</label>
-                    <div class="flex flex-wrap gap-2">
+                    <label id="color-label" class="block text-xs text-gray-500 mb-1">Color</label>
+                    <div class="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="color-label">
                         {#each colors as color}
                             <button 
                                 class="px-3 py-1 border rounded-md {selectedColor === color ? 'border-[#148280] bg-[#148280] bg-opacity-10' : 'border-gray-300'}"
                                 on:click={() => selectedColor = color}
+                                role="radio"
+                                aria-checked={selectedColor === color}
                             >
                                 {color}
                             </button>
@@ -244,14 +248,16 @@
                 
                 {#if hasSizeVariations}
                 <div>
-                    <label class="block text-xs text-gray-500 mb-1">
+                    <label id="size-label" class="block text-xs text-gray-500 mb-1">
                         Size {sizeType === 'numeric' ? `(${sizeUnit})` : ''}
                     </label>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="size-label">
                         {#each sizes as size}
                             <button 
                                 class="px-3 py-1 border rounded-md {selectedSize === size ? 'border-[#148280] bg-[#148280] bg-opacity-10' : 'border-gray-300'}"
                                 on:click={() => selectedSize = size}
+                                role="radio"
+                                aria-checked={selectedSize === size}
                             >
                                 {formatSize(size)}
                             </button>
@@ -265,28 +271,38 @@
             </div>
             
             <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                <label for="quantity-input" class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
                 <div class="flex items-center">
                     <button 
                         class="px-3 py-1 border border-gray-300 rounded-l-md bg-gray-100 hover:bg-gray-200"
                         on:click={decrementQuantity}
                         disabled={quantity <= 1}
+                        aria-label="Decrease quantity"
                     >
-                        -
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                        </svg>
                     </button>
+                    
                     <input 
+                        id="quantity-input"
                         type="number" 
-                        bind:value={quantity} 
-                        min="1" 
+                        bind:value={quantity}
+                        min="1"
                         max={product.stock ?? 10}
                         class="w-16 text-center border-t border-b border-gray-300 py-1"
+                        aria-label="Quantity"
                     />
+                    
                     <button 
                         class="px-3 py-1 border border-gray-300 rounded-r-md bg-gray-100 hover:bg-gray-200"
                         on:click={incrementQuantity}
                         disabled={quantity >= (product.stock ?? 10)}
+                        aria-label="Increase quantity"
                     >
-                        +
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
                     </button>
                 </div>
             </div>

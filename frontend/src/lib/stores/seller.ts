@@ -2,6 +2,59 @@ import { writable } from 'svelte/store';
 import { api } from '../services/api';
 import type { BusinessProfileData, ProductData, VariationData } from '../services/api';
 
+// Define Product interface for proper typing
+export interface Product {
+    id: number;
+    name: string;
+    price: number;
+    description: string | null;
+    stock: number;
+    category: string | null;
+    image_url: string | null;
+    seller_id: number;
+    created_at: string;
+    updated_at: string | null;
+    variations?: Variation[];
+    average_rating?: number;
+    review_count?: number;
+}
+
+// Define Variation interface
+export interface Variation {
+    id: number;
+    product_id: number;
+    size: string | null;
+    color: string | null;
+    stock: number;
+    price_adjustment: number | null;
+    sku: string | null;
+    created_at: string;
+    updated_at: string | null;
+}
+
+// Define Order interface
+export interface Order {
+    id: number;
+    user_id: number;
+    seller_id: number;
+    product_id: number;
+    variation_id: number | null;
+    quantity: number;
+    total_price: number;
+    status: 'pending' | 'approved' | 'rejected' | 'completed';
+    shipping_address: string;
+    payment_method: string;
+    created_at: string;
+    updated_at: string | null;
+    product?: Product;
+    user?: {
+        id: number;
+        name: string;
+        email: string;
+        avatar_url: string | null;
+    };
+}
+
 interface BusinessProfile {
     seller_id: number;
     business_name: string;
@@ -208,6 +261,9 @@ function createSellerStore() {
                 throw error;
             }
         },
+        clearError: () => {
+            update(state => ({ ...state, error: null }));
+        },
         reset: () => {
             set({
                 profile: null,
@@ -220,4 +276,4 @@ function createSellerStore() {
     };
 }
 
-export const seller = createSellerStore(); 
+export const seller = createSellerStore();
