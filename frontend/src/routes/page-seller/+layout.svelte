@@ -17,12 +17,17 @@
   let alertMessage = '';
   let confirmLogout = false;
 
-  // Seller sidebar menu items with improved icons
-  const sellerMenuItems = [
-    { name: 'Profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', href: '/page-seller/profile' },
-    { name: 'Products', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z', href: '/page-seller/create-prod' },
-    { name: 'Orders', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', href: '/page-seller/orders' }
+  // Define all possible menu items
+  const allMenuItems = [
+    { name: 'Profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', href: '/page-seller/profile', requiresApproval: false },
+    { name: 'Products', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z', href: '/page-seller/create-prod', requiresApproval: true },
+    { name: 'Orders', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', href: '/page-seller/orders', requiresApproval: true }
   ];
+  
+  // Reactive store for menu items based on approval status
+  $: sellerMenuItems = $seller.profile?.is_approved 
+    ? allMenuItems 
+    : allMenuItems.filter(item => !item.requiresApproval);
 
   // Loading state
   let loading = false;
@@ -120,23 +125,33 @@
 {/if}
 
 <div class="sidebar {($isMobile ? 'mobile' : '')} {($sidebarOpen ? 'open' : '')}" tabindex="-1">
-  {#if $seller.profile}
-    <div class="profile-summary">
-      <div class="profile-image">
-        {#if $seller.profile.logo_url}
+  <!-- User Profile Section -->
+  <div class="profile-summary">
+    <div class="profile-image">
+      {#if $auth.user}
+        {#if $seller.profile?.logo_url}
           <img src={$seller.profile.logo_url} alt="{$seller.profile.business_name}" />
         {:else}
-          <div class="profile-placeholder">{$seller.profile.business_name.charAt(0)}</div>
+          <div class="profile-placeholder">{$auth.user.name.charAt(0)}</div>
         {/if}
-      </div>
-      <div class="profile-info">
-        <h3 class="business-name">{$seller.profile.business_name}</h3>
-        <div class="approval-status" class:approved={$seller.profile.is_approved} class:pending={!$seller.profile.is_approved}>
-          {$seller.profile.is_approved ? 'Approved' : 'Pending Approval'}
-        </div>
-      </div>
+      {/if}
     </div>
-  {/if}
+    <div class="profile-info">
+      {#if $auth.user}
+        <h3 class="user-name">{$auth.user.name}</h3>
+        <p class="user-email">{$auth.user.email}</p>
+      {/if}
+      
+      {#if $seller.profile}
+        <div class="business-info">
+          <h4 class="business-name">{$seller.profile.business_name}</h4>
+          <div class="approval-status" class:approved={$seller.profile.is_approved} class:pending={!$seller.profile.is_approved}>
+            {$seller.profile.is_approved ? 'Approved' : 'Pending Approval'}
+          </div>
+        </div>
+      {/if}
+    </div>
+  </div>
   
   <nav class="seller-nav">
     {#each sellerMenuItems as item}
@@ -236,10 +251,31 @@
 
   .profile-info {
     text-align: center;
+    width: 100%;
+  }
+
+  .user-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.25rem;
+  }
+
+  .user-email {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 1rem;
+    word-break: break-word;
+  }
+
+  .business-info {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed rgba(0,0,0,0.1);
   }
 
   .business-name {
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 600;
     color: #333;
     margin-bottom: 0.25rem;

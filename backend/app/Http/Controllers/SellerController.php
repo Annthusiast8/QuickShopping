@@ -34,9 +34,13 @@ class SellerController extends Controller
             $shop = Shop::create([
                 'user_id' => $user->id,
                 'name' => $user->name . "'s Shop",
-                'is_active' => true
+                'is_active' => true,
+                'is_approved' => false
             ]);
         }
+        
+        // Make sure we're returning the latest data from the database
+        $shop->refresh();
         
         return response()->json([
             'user' => $user,

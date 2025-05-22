@@ -20,9 +20,14 @@ class Shop extends Model
         'name',
         'description',
         'logo_url',
+        'contact_email',
+        'contact_phone',
         'address',
-        'phone',
-        'is_active'
+        'is_active',
+        'is_approved',
+        'approval_date',
+        'approved_by',
+        'rejection_reason'
     ];
 
     /**

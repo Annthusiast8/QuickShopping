@@ -348,6 +348,30 @@
     <!-- Form fields -->
     <div class="w-full flex flex-col gap-4 mt-16">
       {#if $seller.profile}
+        
+        <!-- Approval Status Banner -->
+        {#if !$seller.profile.is_approved}
+          <div class="w-full p-4 mb-4 bg-amber-50 border-l-4 border-amber-500 rounded-r-md">
+            <div class="flex items-start">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-amber-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-amber-800">Business Approval Pending</h3>
+                <div class="mt-2 text-sm text-amber-700">
+                  <p>Your business profile is currently under review by our admin team. Once approved, you'll be able to:</p>
+                  <ul class="list-disc pl-5 mt-1 space-y-1">
+                    <li>Add and manage products</li>
+                    <li>Receive and process orders</li>
+                    <li>Access all seller features</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        {/if}
         <div class="flex justify-between items-center mb-2">
           <h2 class="text-xl font-semibold text-gray-800">Business Profile</h2>
           {#if !isEditing}

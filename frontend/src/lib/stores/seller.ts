@@ -91,10 +91,27 @@ function createSellerStore() {
         loadProfile: async () => {
             update(state => ({ ...state, loading: true, error: null }));
             try {
-                const profile = await api.getSellerProfile();
+                const response = await api.getSellerProfile();
+                // Extract the shop data from the response and map it to our BusinessProfile structure
+                const profile = {
+                    seller_id: response.shop.id,
+                    business_name: response.shop.name,
+                    description: response.shop.description,
+                    logo_url: response.shop.logo_url,
+                    contact_email: response.shop.contact_email,
+                    contact_phone: response.shop.contact_phone,
+                    address: response.shop.address,
+                    is_approved: response.shop.is_approved,
+                    approval_date: response.shop.approval_date,
+                    created_at: response.shop.created_at,
+                    updated_at: response.shop.updated_at
+                };
+                
+                console.log('Loaded seller profile:', profile);
                 update(state => ({ ...state, profile, loading: false }));
                 return profile;
             } catch (error) {
+                console.error('Error loading seller profile:', error);
                 update(state => ({
                     ...state,
                     loading: false,
@@ -107,10 +124,28 @@ function createSellerStore() {
             update(state => ({ ...state, loading: true, error: null }));
             try {
                 const response = await api.updateSellerProfile(profileData);
-                const profile = await api.getSellerProfile();
+                const profileResponse = await api.getSellerProfile();
+                
+                // Extract the shop data from the response and map it to our BusinessProfile structure
+                const profile = {
+                    seller_id: profileResponse.shop.id,
+                    business_name: profileResponse.shop.name,
+                    description: profileResponse.shop.description,
+                    logo_url: profileResponse.shop.logo_url,
+                    contact_email: profileResponse.shop.contact_email,
+                    contact_phone: profileResponse.shop.contact_phone,
+                    address: profileResponse.shop.address,
+                    is_approved: profileResponse.shop.is_approved,
+                    approval_date: profileResponse.shop.approval_date,
+                    created_at: profileResponse.shop.created_at,
+                    updated_at: profileResponse.shop.updated_at
+                };
+                
+                console.log('Updated seller profile:', profile);
                 update(state => ({ ...state, profile, loading: false }));
                 return response;
             } catch (error) {
+                console.error('Error updating seller profile:', error);
                 update(state => ({
                     ...state,
                     loading: false,
