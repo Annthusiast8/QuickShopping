@@ -1,6 +1,32 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
-    import type { Product } from '$lib/stores/products';
+    import { cart } from '$lib/stores/cart';
+    import { goto } from '$app/navigation';
+    import Alerts from './Alerts.svelte';
+    import type { CartItemData } from '$lib/services/api';
+    
+    // Define Product interface inline to avoid dependency issues
+    interface Product {
+        id: number;
+        seller_id?: number;
+        name: string;
+        description?: string;
+        price: number;
+        stock?: number;
+        image_url?: string;
+        is_active?: boolean;
+        created_at?: string;
+        updated_at?: string | null;
+        rating?: number;
+        review_count?: number;
+        category?: string;
+        variations?: {
+            sizes?: any[];
+            sizeType?: string;
+            sizeUnit?: string;
+            colors?: string[];
+        };
+    }
     
     export let product: Product;
     export let isOpen: boolean = false;
@@ -11,7 +37,10 @@
     let quantity: number = 1;
     let selectedColor: string = '';
     let selectedSize: string | number = '';
-    let showToast = false;
+    let showAlert = false;
+    let alertType: 'success' | 'error' = 'success';
+    let loading = false;
+    let error: string | null = null;
     
     // Default sizes if product doesn't specify variations
     const defaultStandardSizes = ['XS', 'S', 'M', 'L', 'XL'];
@@ -37,37 +66,76 @@
     }
     
     function closeModal() {
+        // Reset state
+        error = null;
         dispatch('close');
     }
     
-    function handleAddToCart() {
+    async function handleAddToCart() {
         if (!selectedColor || (hasSizeVariations && !selectedSize)) {
             return;
         }
         
-        const detail = { 
-            product, 
-            quantity,
-            variation: {
-                color: selectedColor,
-                size: selectedSize
+        loading = true;
+        error = null;
+        
+        try {
+            // Create cart item data according to the API interface
+            const cartItem: CartItemData = {
+                item_id: product.id,
+                quantity: quantity,
+                variation: {
+                    color: selectedColor,
+                    size: String(selectedSize)
+                }
+            };
+            
+            if (buyNow) {
+                // Add to cart and redirect to checkout
+                await cart.addToCart(cartItem);
+                closeModal();
+                
+                // Show success alert briefly before redirecting
+                alertType = 'success';
+                showAlert = true;
+                
+                setTimeout(() => {
+                    goto('/page-customer/checkout');
+                }, 500);
+            } else {
+                // Just add to cart
+                await cart.addToCart(cartItem);
+                
+                // Show success alert
+                alertType = 'success';
+                showAlert = true;
+                
+                // Close modal after a delay
+                setTimeout(() => {
+                    showAlert = false;
+                    closeModal();
+                }, 1500);
             }
-        };
-        
-        if (buyNow) {
-            dispatch('buyNow', detail);
-        } else {
+            
+            // Notify parent component
+            const detail = { 
+                product, 
+                quantity,
+                variation: {
+                    color: selectedColor,
+                    size: selectedSize
+                }
+            };
+            
             dispatch('addToCart', detail);
+        } catch (err) {
+            // Handle error
+            error = err instanceof Error ? err.message : 'Failed to add item to cart';
+            alertType = 'error';
+            showAlert = true;
+        } finally {
+            loading = false;
         }
-        
-        // Show success toast
-        showToast = true;
-        
-        closeModal();
-    }
-    
-    function closeToast() {
-        showToast = false;
     }
     
     function handleBackdropClick(event: MouseEvent) {
@@ -77,7 +145,8 @@
     }
     
     function incrementQuantity() {
-        if (quantity < product.stock) {
+        const maxStock = product.stock ?? 10; // Default to 10 if stock is undefined
+        if (quantity < maxStock) {
             quantity++;
         }
     }
@@ -100,23 +169,34 @@
     <div 
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
         on:click={handleBackdropClick}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
     >
         <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4 relative">
             <button 
-                class="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+                class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 transition-colors"
                 on:click={closeModal}
+                aria-label="Close"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
             
-            <h2 class="text-xl font-bold mb-4">{buyNow ? 'Place Order' : 'Add to Cart'}</h2>
+            <h2 id="modal-title" class="text-xl font-bold mb-4">{buyNow ? 'Place Order' : 'Add to Cart'}</h2>
+            
+            <!-- Error message -->
+            {#if error}
+                <div class="mb-4 p-3 bg-red-50 text-red-700 rounded-md text-sm">
+                    {error}
+                </div>
+            {/if}
             
             <div class="flex mb-6">
                 <div class="w-1/3 mr-4">
                     <img 
-                        src={product.image_url} 
+                        src={product.image_url || 'https://via.placeholder.com/150'} 
                         alt={product.name}
                         class="w-full h-auto rounded-md object-cover"
                     />
@@ -138,7 +218,7 @@
                     
                     <p class="text-lg font-bold text-[#21463E]">${product.price.toFixed(2)}</p>
                     
-                    <p class="text-sm text-gray-500 mt-1">{product.stock} items in stock</p>
+                    <p class="text-sm text-gray-500 mt-1">{product.stock ?? 'Unknown'} items in stock</p>
                 </div>
             </div>
             
@@ -198,13 +278,13 @@
                         type="number" 
                         bind:value={quantity} 
                         min="1" 
-                        max={product.stock}
+                        max={product.stock ?? 10}
                         class="w-16 text-center border-t border-b border-gray-300 py-1"
                     />
                     <button 
                         class="px-3 py-1 border border-gray-300 rounded-r-md bg-gray-100 hover:bg-gray-200"
                         on:click={incrementQuantity}
-                        disabled={quantity >= product.stock}
+                        disabled={quantity >= (product.stock ?? 10)}
                     >
                         +
                     </button>
@@ -213,23 +293,39 @@
             
             <div class="flex justify-end gap-2">
                 <button 
-                    class="px-4 py-2 border border-gray-300 bg-red-600 text-white rounded-md hover:bg-gray-600"
+                    class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
                     on:click={closeModal}
+                    disabled={loading}
                 >
                     Cancel
                 </button>
                 <button 
-                    class="px-4 py-2 {(!selectedColor || (hasSizeVariations && !selectedSize)) ? 'bg-gray-400 cursor-not-allowed' : buyNow ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-[#21463E] hover:bg-[#143129]'} text-white rounded-md transition-colors duration-200"
+                    class="px-4 py-2 {(!selectedColor || (hasSizeVariations && !selectedSize) || loading) ? 'bg-gray-400 cursor-not-allowed' : buyNow ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-[#21463E] hover:bg-[#143129]'} text-white rounded-md transition-colors duration-200 flex items-center"
                     on:click={handleAddToCart}
-                    disabled={!selectedColor || (hasSizeVariations && !selectedSize)}
+                    disabled={!selectedColor || (hasSizeVariations && !selectedSize) || loading}
                     title={(!selectedColor || (hasSizeVariations && !selectedSize)) ? 'Please select all required variations' : buyNow ? 'Checkout' : 'Add to cart'}
                 >
-                    {buyNow ? 'Checkout' : 'Add to Cart'}
+                    {#if loading}
+                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing...
+                    {:else}
+                        {buyNow ? 'Checkout' : 'Add to Cart'}
+                    {/if}
                 </button>
             </div>
         </div>
     </div>
 {/if}
 
-
-
+<!-- Alert for success/error messages -->
+<Alerts 
+    isVisible={showAlert} 
+    type={alertType === 'success' ? 'success' : 'error'}
+    title={alertType === 'success' ? (buyNow ? 'Proceeding to Checkout' : 'Added to Cart') : 'Error'}
+    cartAdded={alertType === 'success' ? `${product.name} has been added to your cart` : error || 'Failed to add item to cart'}
+    autoDismiss={alertType === 'success'}
+    on:close={() => showAlert = false} 
+/>
