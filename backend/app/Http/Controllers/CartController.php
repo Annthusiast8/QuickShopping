@@ -18,7 +18,7 @@ class CartController extends Controller
     public function getCart()
     {
         $cart = Cart::where('user_id', Auth::id())
-            ->with(['items.item', 'items.variation'])
+            ->with(['items.item'])
             ->first();
             
         if (!$cart) {

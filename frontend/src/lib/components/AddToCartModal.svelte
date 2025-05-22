@@ -100,7 +100,10 @@
                 showAlert = true;
                 
                 setTimeout(() => {
-                    goto('/page-customer/checkout');
+                    goto('/page-customer/cart');
+                    setTimeout(() => {
+                        goto('/page-customer/checkout');
+                    }, 100);
                 }, 500);
             } else {
                 // Just add to cart
@@ -129,6 +132,7 @@
             
             dispatch('addToCart', detail);
         } catch (err) {
+            console.error('Add to cart error:', err);
             // Handle error
             error = err instanceof Error ? err.message : 'Failed to add item to cart';
             alertType = 'error';

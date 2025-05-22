@@ -91,32 +91,33 @@ function createAuthStore() {
       }
     },
     logout: async () => {
-      // Don't try to call the API if we're already logged out
-      if (!browser || !localStorage.getItem('token')) {
-        if (browser) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-        }
-        set({
-          user: null,
-          token: null,
-          loading: false,
-          error: null,
-          success: 'Logged out successfully'
-        });
-        return;
-      }
-
       update(state => ({ ...state, loading: true, error: null, success: null }));
-      try {
-        await api.logout();
-      } catch (error) {
-        console.error('Logout error:', error);
-      } finally {
+      
+      // Always clear local storage regardless of API call success
+      const clearLocalStorage = () => {
         if (browser) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
+          // Clear any other auth-related items
+          localStorage.removeItem('seller');
         }
+      };
+      
+      try {
+        // Only attempt API call if we have a token
+        if (browser && localStorage.getItem('token')) {
+          try {
+            await api.logout();
+            console.log('Logout API call successful');
+          } catch (error) {
+            console.error('Logout API call failed, but continuing with local logout:', error);
+            // Continue with logout process even if API call fails
+          }
+        }
+      } finally {
+        // Always clear storage and reset state
+        clearLocalStorage();
+        
         set({
           user: null,
           token: null,

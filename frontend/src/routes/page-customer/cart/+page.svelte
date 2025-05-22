@@ -53,18 +53,34 @@
   
   // Update cart items when the store changes
   $: {
-    cartItems = $cart.items.map(item => ({
-      ...item,
-      selected: item.selected || false // Ensure selected property exists
-    }));
+    cartItems = ($cart.items || []).map(item => {
+      // Ensure item has a valid product structure
+      const product = item.item || {};
+      return {
+        ...item,
+        product: {
+          id: product.id || item.item_id || 0,
+          seller_id: product.seller_id || 0,
+          name: product.name || 'Unknown Product',
+          description: product.description || '',
+          price: product.price || 0,
+          stock: product.stock || 0,
+          image_url: product.image_url || '',
+          category: product.category || '',
+          rating: product.rating || 0,
+          review_count: product.review_count || 0
+        },
+        selected: item.selected || false // Ensure selected property exists
+      };
+    });
     loading = $cart.loading;
   }
   
   // Filter items based on search query
   $: visibleItems = searchQuery.trim() 
     ? cartItems.filter(item => 
-        item.product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.product.description?.toLowerCase().includes(searchQuery.toLowerCase())
+        (item.product?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.product?.description || '').toLowerCase().includes(searchQuery.toLowerCase())
       )
     : cartItems;
   
@@ -98,7 +114,14 @@
     }>();
     
     items.forEach(item => {
-      const seller_id = item.product.seller_id;
+      // Skip items with missing product data
+      if (!item.product) {
+        console.warn('Item missing product data:', item);
+        return;
+      }
+      
+      // Use a default seller_id if not available
+      const seller_id = item.product.seller_id || 0;
       
       if (!grouped.has(seller_id)) {
         // Get seller name from mock data

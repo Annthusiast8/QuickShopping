@@ -69,10 +69,26 @@
     let errorMessage = '';
     
     // Store reactive variables
-    $: cartItems = $cart.items.map(item => ({
-        ...item,
-        selected: item.selected || false // Ensure selected property exists
-    }));
+    $: cartItems = ($cart.items || []).map(item => {
+        // Ensure item has a valid product structure
+        const product = item.item || {};
+        return {
+            ...item,
+            product: {
+                id: product.id || item.item_id || 0,
+                seller_id: product.seller_id || 0,
+                name: product.name || 'Unknown Product',
+                description: product.description || '',
+                price: product.price || 0,
+                stock: product.stock || 0,
+                image_url: product.image_url || '',
+                category: product.category || '',
+                rating: product.rating || 0,
+                review_count: product.review_count || 0
+            },
+            selected: item.selected || false // Ensure selected property exists
+        };
+    });
     $: profileAddresses = $profile.addresses || [];
     $: cartLoading = $cart.loading;
     $: profileLoading = $profile.loading;
@@ -115,7 +131,7 @@
             }
             
             // Get selected items from the cart store
-            selectedItems = $cart.items.filter((item: CartItem) => item.selected);
+            selectedItems = cartItems.filter((item: CartItem) => item.selected);
             
             // If no items are selected, redirect back to cart
             if (selectedItems.length === 0) {
@@ -275,7 +291,7 @@
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-semibold">Product Ordered</h2>
                     
-                    {#if selectedItems.length > 0 && selectedItems[0].product.seller_id}
+                    {#if selectedItems.length > 0 && selectedItems[0].product?.seller_id}
                         <div class="text-sm text-gray-600">
                             Shipped by {getSellerName(selectedItems[0].product.seller_id)}
                         </div>
@@ -286,11 +302,21 @@
                     {#each selectedItems as item}
                         <div class="flex items-center py-4 border-b last:border-b-0">
                             <div class="w-20 h-20 flex-shrink-0">
-                                <img 
-                                    src={item.product.image_url} 
-                                    alt={item.product.name}
-                                    class="w-full h-full object-cover rounded-md"
-                                />
+                                <!-- Use a simpler approach to handle image errors -->
+                                {#if item.product.image_url}
+                                    <img 
+                                        src={item.product.image_url} 
+                                        alt={item.product.name || 'Product'}
+                                        class="w-full h-full object-cover rounded-md"
+                                        on:error={() => item.product.image_url = '/images/placeholder.jpg'}
+                                    />
+                                {:else}
+                                    <img 
+                                        src="/images/placeholder.jpg" 
+                                        alt="Product placeholder"
+                                        class="w-full h-full object-cover rounded-md"
+                                    />
+                                {/if}
                             </div>
                             
                             <div class="ml-4 flex-grow">

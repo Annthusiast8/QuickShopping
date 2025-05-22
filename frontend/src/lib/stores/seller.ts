@@ -86,12 +86,34 @@ function createSellerStore() {
         error: null
     });
 
+    // Helper function to get the current state
+    const get = () => {
+        let currentState: SellerState;
+        subscribe(state => {
+            currentState = state;
+        })();
+        return currentState!;
+    };
+
     return {
         subscribe,
-        loadProfile: async () => {
+        loadProfile: async (forceRefresh = false) => {
+            // If we already have a profile and not forcing refresh, return it
+            const currentState = get();
+            if (!forceRefresh && currentState.profile && !currentState.loading) {
+                console.log('Using cached seller profile:', currentState.profile);
+                return currentState.profile;
+            }
+            
             update(state => ({ ...state, loading: true, error: null }));
             try {
                 const response = await api.getSellerProfile();
+                console.log('API response for seller profile:', response);
+                
+                if (!response || !response.shop) {
+                    throw new Error('Invalid response format from API');
+                }
+                
                 // Extract the shop data from the response and map it to our BusinessProfile structure
                 const profile = {
                     seller_id: response.shop.id,
@@ -101,13 +123,13 @@ function createSellerStore() {
                     contact_email: response.shop.contact_email,
                     contact_phone: response.shop.contact_phone,
                     address: response.shop.address,
-                    is_approved: response.shop.is_approved,
+                    is_approved: response.shop.is_approved === 1 || response.shop.is_approved === true,
                     approval_date: response.shop.approval_date,
                     created_at: response.shop.created_at,
                     updated_at: response.shop.updated_at
                 };
                 
-                console.log('Loaded seller profile:', profile);
+                console.log('Processed seller profile:', profile);
                 update(state => ({ ...state, profile, loading: false }));
                 return profile;
             } catch (error) {
@@ -157,10 +179,41 @@ function createSellerStore() {
         loadProducts: async () => {
             update(state => ({ ...state, loading: true, error: null }));
             try {
-                const products = await api.getSellerProducts();
-                update(state => ({ ...state, products, loading: false }));
-                return products;
+                const response = await api.getSellerProducts();
+                console.log('API response:', response);
+                
+                // Handle both array and object with data property formats
+                let products: any[] = [];
+                if (Array.isArray(response)) {
+                    products = response;
+                } else if (response && typeof response === 'object' && 'data' in response) {
+                    products = (response as {data: any[]}).data;
+                } else {
+                    console.error('Unexpected API response format:', response);
+                }
+                
+                // Map API response to match Product interface
+                const mappedProducts = products.map((product: any) => ({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    description: product.description,
+                    stock: product.stock,
+                    category: product.category,
+                    image_url: product.image ? `http://localhost/QuickShopping/backend/public/storage/${product.image}` : null,
+                    seller_id: product.seller_id,
+                    created_at: product.created_at,
+                    updated_at: product.updated_at,
+                    variations: product.variations || [],
+                    average_rating: product.average_rating || product.reviews_avg_rating || 0,
+                    review_count: product.orders_count || 0
+                }));
+                
+                console.log('Mapped products:', mappedProducts);
+                update(state => ({ ...state, products: mappedProducts, loading: false }));
+                return mappedProducts;
             } catch (error) {
+                console.error('Error loading products:', error);
                 update(state => ({
                     ...state,
                     loading: false,
@@ -173,10 +226,42 @@ function createSellerStore() {
             update(state => ({ ...state, loading: true, error: null }));
             try {
                 const response = await api.addSellerProduct(productData);
-                const products = await api.getSellerProducts();
-                update(state => ({ ...state, products, loading: false }));
+                console.log('Product added response:', response);
+                
+                // Reload products with the same mapping logic as loadProducts
+                const productsResponse = await api.getSellerProducts();
+                
+                // Handle both array and object with data property formats
+                let products: any[] = [];
+                if (Array.isArray(productsResponse)) {
+                    products = productsResponse;
+                } else if (productsResponse && typeof productsResponse === 'object' && 'data' in productsResponse) {
+                    products = (productsResponse as {data: any[]}).data;
+                } else {
+                    console.error('Unexpected API response format:', productsResponse);
+                }
+                
+                // Map API response to match Product interface
+                const mappedProducts = products.map((product: any) => ({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    description: product.description,
+                    stock: product.stock,
+                    category: product.category,
+                    image_url: product.image ? `http://localhost/QuickShopping/backend/public/storage/${product.image}` : null,
+                    seller_id: product.seller_id,
+                    created_at: product.created_at,
+                    updated_at: product.updated_at,
+                    variations: product.variations || [],
+                    average_rating: product.average_rating || product.reviews_avg_rating || 0,
+                    review_count: product.orders_count || 0
+                }));
+                
+                update(state => ({ ...state, products: mappedProducts, loading: false }));
                 return response;
             } catch (error) {
+                console.error('Error adding product:', error);
                 update(state => ({
                     ...state,
                     loading: false,
@@ -189,10 +274,42 @@ function createSellerStore() {
             update(state => ({ ...state, loading: true, error: null }));
             try {
                 const response = await api.updateSellerProduct(productId, productData);
-                const products = await api.getSellerProducts();
-                update(state => ({ ...state, products, loading: false }));
+                console.log('Product updated response:', response);
+                
+                // Reload products with the same mapping logic as loadProducts
+                const productsResponse = await api.getSellerProducts();
+                
+                // Handle both array and object with data property formats
+                let products: any[] = [];
+                if (Array.isArray(productsResponse)) {
+                    products = productsResponse;
+                } else if (productsResponse && typeof productsResponse === 'object' && 'data' in productsResponse) {
+                    products = (productsResponse as {data: any[]}).data;
+                } else {
+                    console.error('Unexpected API response format:', productsResponse);
+                }
+                
+                // Map API response to match Product interface
+                const mappedProducts = products.map((product: any) => ({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    description: product.description,
+                    stock: product.stock,
+                    category: product.category,
+                    image_url: product.image ? `http://localhost/QuickShopping/backend/public/storage/${product.image}` : null,
+                    seller_id: product.seller_id,
+                    created_at: product.created_at,
+                    updated_at: product.updated_at,
+                    variations: product.variations || [],
+                    average_rating: product.average_rating || product.reviews_avg_rating || 0,
+                    review_count: product.orders_count || 0
+                }));
+                
+                update(state => ({ ...state, products: mappedProducts, loading: false }));
                 return response;
             } catch (error) {
+                console.error('Error updating product:', error);
                 update(state => ({
                     ...state,
                     loading: false,
@@ -205,10 +322,42 @@ function createSellerStore() {
             update(state => ({ ...state, loading: true, error: null }));
             try {
                 const response = await api.deleteSellerProduct(productId);
-                const products = await api.getSellerProducts();
-                update(state => ({ ...state, products, loading: false }));
+                console.log('Product deleted response:', response);
+                
+                // Reload products with the same mapping logic as loadProducts
+                const productsResponse = await api.getSellerProducts();
+                
+                // Handle both array and object with data property formats
+                let products: any[] = [];
+                if (Array.isArray(productsResponse)) {
+                    products = productsResponse;
+                } else if (productsResponse && typeof productsResponse === 'object' && 'data' in productsResponse) {
+                    products = (productsResponse as {data: any[]}).data;
+                } else {
+                    console.error('Unexpected API response format:', productsResponse);
+                }
+                
+                // Map API response to match Product interface
+                const mappedProducts = products.map((product: any) => ({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    description: product.description,
+                    stock: product.stock,
+                    category: product.category,
+                    image_url: product.image ? `http://localhost/QuickShopping/backend/public/storage/${product.image}` : null,
+                    seller_id: product.seller_id,
+                    created_at: product.created_at,
+                    updated_at: product.updated_at,
+                    variations: product.variations || [],
+                    average_rating: product.average_rating || product.reviews_avg_rating || 0,
+                    review_count: product.orders_count || 0
+                }));
+                
+                update(state => ({ ...state, products: mappedProducts, loading: false }));
                 return response;
             } catch (error) {
+                console.error('Error deleting product:', error);
                 update(state => ({
                     ...state,
                     loading: false,

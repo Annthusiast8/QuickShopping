@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { seller } from '$lib/stores/seller';
   import { auth } from '$lib/stores/auth';
+  import { api } from '$lib/services/api';
   import Header from '$lib/header.svelte';
   import Alerts from '$lib/components/Alerts.svelte';
 
@@ -83,8 +84,22 @@
     error = null;
     
     try {
-      await seller.loadOrders();
-      orders = $seller.orders;
+      const response = await api.getSellerOrders();
+      console.log('Orders API response:', response);
+      
+      // Handle different response formats
+      if (Array.isArray(response)) {
+        orders = response;
+      } else if (response && typeof response === 'object' && 'data' in response) {
+        orders = (response as {data: any[]}).data;
+      } else {
+        console.error('Unexpected API response format:', response);
+        orders = [];
+      }
+      
+      // We don't need to manually update the seller store as it doesn't expose an update method
+      // Just use the orders directly in this component
+      
       applyFilters();
     } catch (err) {
       console.error('Failed to load orders:', err);
@@ -170,7 +185,7 @@
     
     loading = true;
     try {
-      await seller.updateOrderStatus(selectedOrder.id, newStatus as any);
+      await api.updateOrderStatus(selectedOrder.id, newStatus as 'approved' | 'rejected' | 'completed');
       showUpdateModal = false;
       showAlert = true;
       alertType = 'success';
